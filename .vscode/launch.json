@@ -1,0 +1,16 @@
+{
+    "configurations": [
+        {
+            "name": "(Windows) 启动",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/app/Debug/hdrd_app.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/app/Debug",
+            "environment": [],
+            "console": "externalTerminal",
+            "visualizerFile": "c:\\Users\\alfre\\AppData\\Roaming\\Code\\User\\workspaceStorage\\f107026094a00ebd8779bf8023434fcb\\tonka3000.qtvsctools\\qt.natvis.xml"
+        }
+    ]
+}

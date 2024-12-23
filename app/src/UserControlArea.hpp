@@ -1,0 +1,836 @@
+#pragma once
+
+#include <QBoxLayout>
+
+#include <QtWidgets>
+
+#include "Utils.hpp"
+
+#include "Global.hpp"
+#include "logwidget.hpp"
+
+#include "Common.h"
+#include "USBCamera.hpp"
+class MaskMouseDrawModeControl : public QWidget
+{
+    Q_OBJECT
+
+public:
+    // ctor
+    MaskMouseDrawModeControl(QWidget *parent = nullptr) : QWidget(parent)
+    {
+        QVBoxLayout *vbox = new QVBoxLayout(this);
+        QHBoxLayout *hbox1 = new QHBoxLayout();
+
+        QSpinBox *globalIntensitySpinBox = new QSpinBox();
+        drawButton = new QPushButton("绘制局部调光");
+        drawButton->setCheckable(true);
+        drawButton->setChecked(false);
+        drawButton->setIcon(QIcon::fromTheme(":/icons8_radar_plot_2.svg"));
+        clearButton = new QPushButton("清除局部调光");
+        hbox1->addWidget(drawButton, 1);
+        hbox1->addWidget(clearButton, 1);
+
+        connect(drawButton, &QPushButton::clicked, [this, globalIntensitySpinBox]
+                {
+                    if (drawButton->isChecked())
+                    {
+                        // 开始绘制
+                        drawButton->setChecked(true);
+                        drawButton->setText("完成绘制");
+                        emit drawMode(true);
+                    }
+                    else
+                    {
+                        // 完成绘制
+                        {
+                            // 产生一个MaskData数据并交给MaskWindow处理
+                            MaskData maskData;
+                            maskData.continuousMode = false;
+                            maskData.polygons = GlobalResourceManager::getInstance().frameRenderer->getMaskPolygons();
+                            maskData.globalBackgroundIntensity = globalIntensitySpinBox->value() / 255.0f;
+                            GlobalResourceManager::getInstance().maskWindow->onMaskDataChanged(maskData); 
+                        }
+                        drawButton->setChecked(false);
+                        drawButton->setText("绘制局部调光");
+                        emit drawMode(false);
+                    } });
+
+        connect(clearButton, &QPushButton::clicked, [this, globalIntensitySpinBox]
+                { 
+                    
+                    // 产生一个MaskData数据并交给MaskWindow处理
+                    MaskData maskData;
+                    maskData.continuousMode = false;
+                    maskData.polygons = {};
+                    maskData.globalBackgroundIntensity = globalIntensitySpinBox->value() / 255.0f;
+                    GlobalResourceManager::getInstance().maskWindow->onMaskDataChanged(maskData);
+                    emit clearButtonClicked(); });
+
+        vbox->addLayout(hbox1);
+
+        QHBoxLayout *hbox2 = new QHBoxLayout();
+        hbox2->setContentsMargins(0, 0, 0, 0);
+        QLabel *label = new QLabel("全局调光值");
+        globalIntensitySpinBox->setRange(0, 255);
+        hbox2->addWidget(label, 1);
+        hbox2->addWidget(globalIntensitySpinBox, 1);
+        vbox->addLayout(hbox2);
+        //  globalIntensitySpinBox 行为,值发生变化时
+        connect(globalIntensitySpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this, globalIntensitySpinBox]
+                {
+                    MaskData maskData;
+                    maskData.continuousMode = false;
+                    maskData.polygons = GlobalResourceManager::getInstance().frameRenderer->getMaskPolygons();
+                    maskData.globalBackgroundIntensity = globalIntensitySpinBox->value() / 255.0f;
+                    GlobalResourceManager::getInstance().maskWindow->onMaskDataChanged(maskData); });
+
+        vbox->addStretch(1);
+
+        setLayout(vbox);
+    }
+
+signals:
+    void drawMode(bool enabled);
+    void clearButtonClicked();
+
+private:
+    QPushButton *drawButton;  // 绘制
+    QPushButton *clearButton; // 清除
+    QPushButton *applyMask;   // 应用Mask
+};
+
+class UserControlArea : public QWidget
+{
+    Q_OBJECT
+
+public:
+    UserControlArea(QWidget *parent = nullptr)
+        : QWidget(parent),
+          frameRateQueryTimer(new QTimer(this))
+    {
+        QVBoxLayout *vbox = new QVBoxLayout(this);
+
+        // 添加两个按钮 并排 等分宽度
+        enableButton = new QPushButton("开启参考相机");
+        streamButton = new QPushButton("取流");
+        QHBoxLayout *hbox = new QHBoxLayout();
+        hbox->addWidget(enableButton, 1);
+        hbox->addWidget(streamButton, 1);
+        vbox->addLayout(hbox);
+
+        connect(enableButton, &QPushButton::clicked, [this]
+                {
+                    if (enableButton->text() == "开启参考相机")
+                    {
+                        // 如果GlobalResourceManager中没有相机对象，则创建一个，默认0号相机
+                        if(GlobalResourceManager::getInstance().camera == nullptr)
+                        {
+                            Log::info("Create a new USBCamera");
+                            GlobalResourceManager::getInstance().camera = std::make_unique<USBCamera>(0);
+                        }
+
+                        if (GlobalResourceManager::getInstance().camera != nullptr)
+                        {
+                            if(GlobalResourceManager::getInstance().camera->open())
+                            {
+                                Log::info("Camera opened");
+                                enableButton->setText("关闭");
+                                streamButton->setEnabled(true);
+                                // 更新当前值
+                                onUpdateCurrentValues();
+                                // 启动定时器查询帧率
+                                frameRateQueryTimer->start(1000);
+                            }
+                            else 
+                            {
+                                Log::error("Camera open failed");
+                            }
+                        }
+                        else
+                        {
+                            Log::error("No camera in GlobalResourceManager");
+                        }
+                    }
+                    else
+                    {
+                        if (GlobalResourceManager::getInstance().camera != nullptr)
+                        {
+                           if(GlobalResourceManager::getInstance().camera->close()) 
+                           {
+                                frameRateQueryTimer->stop();
+                                enableButton->setText("开启参考相机");
+                                streamButton->setEnabled(false);
+                                Log::info("Camera closed");
+                           }
+                           else 
+                           {
+                                Log::error("Camera close failed");
+                           }
+                        }
+                        else
+                        {
+                            Log::error("No camera in GlobalResourceManager");
+                        }
+                    } });
+
+        connect(streamButton, &QPushButton::clicked, [this]
+                {
+                        if (streamButton->text() == "取流")
+                        {
+                            if (GlobalResourceManager::getInstance().camera != nullptr)
+                            {
+                                if(GlobalResourceManager::getInstance().camera->start())
+                                {
+                                    Log::info("Camera started");
+                                    streamButton->setText("停止");
+                                    // 取流时禁用width height调节
+                                    roiWidthSpinBox->setEnabled(false);
+                                    roiHeightSpinBox->setEnabled(false);
+                                }
+                                else 
+                                {
+                                    Log::error("Camera start failed");
+                                }
+                            }
+                            else
+                            {
+                                Log::error("No camera in GlobalResourceManager");
+                            }
+                        }
+                        else
+                        {
+                            if (GlobalResourceManager::getInstance().camera != nullptr)
+                            {
+                                if(GlobalResourceManager::getInstance().camera->stop())
+                                {
+                                    Log::info("Camera stopped");
+                                    streamButton->setText("取流");
+                                    // 停止取流时启用width height调节
+                                    roiWidthSpinBox->setEnabled(true);
+                                    roiHeightSpinBox->setEnabled(true);
+                                }
+                                else 
+                                {
+                                    Log::error("Camera stop failed");
+                                }
+                            }
+                            else
+                            {
+                                Log::error("No camera in GlobalResourceManager");
+                            }
+                        } });
+
+        // 帧率
+        frameRateSpinBox = new QSpinBox();
+        frameRateSpinBox->setReadOnly(true);
+        frameRateSpinBox->setRange(0, 1000);
+        frameRateSpinBox->setValue(0);
+        frameRateSpinBox->setSingleStep(1);
+        frameRateSpinBox->setSuffix(" fps");
+        addRow(vbox, "帧率", frameRateSpinBox, true);
+        connect(frameRateQueryTimer, &QTimer::timeout, this, &UserControlArea::onUpdateFPS);
+
+        // 分割线
+        {
+            QFrame *line = new QFrame();
+            line->setFrameShape(QFrame::HLine);
+            line->setFrameShadow(QFrame::Sunken);
+            vbox->addWidget(line);
+        }
+
+        // 曝光模式
+        exposureMode = new QComboBox();
+        exposureMode->addItem("手动");
+        exposureMode->addItem("自动一次");
+        exposureMode->addItem("自动连续");
+        addRow(vbox, "曝光模式", exposureMode, true);
+        connect(exposureMode, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index)
+                {
+                    if (GlobalResourceManager::getInstance().camera != nullptr)
+                    {
+                        GlobalResourceManager::getInstance().camera->set("ExposureAuto", index);
+                        if(index==1)
+                        {
+                            // 一段时间后恢复到手动模式
+                            QTimer::singleShot(1000, [this]
+                            {
+                                if (GlobalResourceManager::getInstance().camera != nullptr)
+                                {
+                                    GlobalResourceManager::getInstance().camera->set("ExposureAuto", 0);
+                                    exposureMode->setCurrentIndex(0);
+                                }
+                            });
+                        }
+                        else if (index==2)
+                        {
+                            // 禁用曝光时间设置
+                            exposureTimeSpinBox->setEnabled(false);
+                        }
+
+                        // 一段时间后更新当前值
+                        QTimer::singleShot(1000, [this]
+                        {
+                            onUpdateCurrentValues();
+                        });
+                        
+                    } });
+
+        // 曝光时间
+        exposureTimeSpinBox = new QSpinBox();
+        exposureTimeSpinBox->setRange(100, 1000000);
+        exposureTimeSpinBox->setValue(10000);
+        exposureTimeSpinBox->setSingleStep(10);
+        exposureTimeSpinBox->setSuffix(" µs");
+        addRow(vbox, "曝光时间", exposureTimeSpinBox, true);
+        connect(exposureTimeSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                {
+                    if (GlobalResourceManager::getInstance().camera != nullptr)
+                    {
+                        GlobalResourceManager::getInstance().camera->set("ExposureTime", double(value));
+                    } });
+
+        // 增益
+        gainSpinBox = new QSpinBox();
+        gainSpinBox->setRange(0, 20);
+        gainSpinBox->setValue(0);
+        gainSpinBox->setSingleStep(1);
+        addRow(vbox, "增益", gainSpinBox, true);
+        connect(gainSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                {
+                    if (GlobalResourceManager::getInstance().camera != nullptr)
+                    {
+                        GlobalResourceManager::getInstance().camera->set("Gain", double(value));
+                    } });
+
+        // 分割线
+        {
+            QFrame *line = new QFrame();
+            line->setFrameShape(QFrame::HLine);
+            line->setFrameShadow(QFrame::Sunken);
+            vbox->addWidget(line);
+        }
+
+        // ROI
+        roiOffsetXSpinBox = new QSpinBox();
+        roiOffsetXSpinBox->setRange(0, 800);
+        roiOffsetXSpinBox->setValue(0);
+        roiOffsetXSpinBox->setSingleStep(4);
+        addRow(vbox, "ROI X偏移", roiOffsetXSpinBox, true);
+        connect(roiOffsetXSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                {
+                    if (GlobalResourceManager::getInstance().camera != nullptr)
+                    {
+                        GlobalResourceManager::getInstance().camera->set("OffsetX", value);
+                    } });
+
+        roiOffsetYSpinBox = new QSpinBox();
+        roiOffsetYSpinBox->setRange(0, 800);
+        roiOffsetYSpinBox->setValue(0);
+        roiOffsetYSpinBox->setSingleStep(4);
+        addRow(vbox, "ROI Y偏移", roiOffsetYSpinBox, true);
+        connect(roiOffsetYSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                {
+                    if (GlobalResourceManager::getInstance().camera != nullptr)
+                    {
+                        GlobalResourceManager::getInstance().camera->set("OffsetY", value);
+                    } });
+
+        roiWidthSpinBox = new QSpinBox();
+        roiWidthSpinBox->setRange(4, 2000);
+        roiWidthSpinBox->setValue(4);
+        roiWidthSpinBox->setSingleStep(4);
+        addRow(vbox, "ROI 宽度", roiWidthSpinBox, true);
+        connect(roiWidthSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                {
+                    if (GlobalResourceManager::getInstance().camera != nullptr)
+                    {
+                        GlobalResourceManager::getInstance().camera->set("Width", value);
+                    } });
+
+        roiHeightSpinBox = new QSpinBox();
+        roiHeightSpinBox->setRange(4, 2000);
+        roiHeightSpinBox->setValue(4);
+        roiHeightSpinBox->setSingleStep(4);
+        addRow(vbox, "ROI 高度", roiHeightSpinBox, true);
+        connect(roiHeightSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                {
+                    if (GlobalResourceManager::getInstance().camera != nullptr)
+                    {
+                        GlobalResourceManager::getInstance().camera->set("Height", value);
+                    } });
+
+        // 分割线
+        {
+            QFrame *line = new QFrame();
+            line->setFrameShape(QFrame::HLine);
+            line->setFrameShadow(QFrame::Sunken);
+            vbox->addWidget(line);
+        }
+
+        // DMD工作模式
+        DMDWorkModeComboBox = new QComboBox();
+        DMDWorkModeComboBox->addItem("正常模式");
+        DMDWorkModeComboBox->addItem("编码模式");
+        addRow(vbox, "DMD工作模式", DMDWorkModeComboBox, true);
+        connect(DMDWorkModeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index)
+                {
+                    // Mask宽度和高度设为不可编辑
+                    maskWindowWidthSpinBox->setEnabled(index == 0);
+                    maskWindowHeightSpinBox->setEnabled(index == 0);
+
+                    GlobalResourceManager::getInstance().maskWindow->onDMDWorkModeChanged(DMDWorkMode(index)); });
+
+        // 显示掩膜窗口
+        showMaskWindowButton = new QPushButton("显示Mask窗口");
+        showMaskWindowButton->setCheckable(true);
+        addRow(vbox, "Mask窗口", showMaskWindowButton, true);
+        connect(showMaskWindowButton, &QPushButton::clicked, [this]
+                {
+                    if (showMaskWindowButton->isChecked())
+                    {
+                        maskWindowProperty.visible = true;
+                        emit maskWindowPropertyChanged(maskWindowProperty);
+                        showMaskWindowButton->setText("隐藏Mask窗口");
+                    }
+                    else
+                    {
+                        maskWindowProperty.visible = false;
+                        emit maskWindowPropertyChanged(maskWindowProperty);
+                        showMaskWindowButton->setText("显示Mask窗口");
+                    } });
+        // 两个按钮（置于1920 置于0） 并排 等分宽度
+        {
+            QHBoxLayout *hbox = new QHBoxLayout();
+            QPushButton *moveTo1920Button = new QPushButton("置于1920");
+            QPushButton *moveTo0Button = new QPushButton("置于0");
+            hbox->addWidget(moveTo1920Button, 1);
+            hbox->addWidget(moveTo0Button, 1);
+            vbox->addLayout(hbox);
+
+            connect(moveTo1920Button, &QPushButton::clicked, [this]
+                    {
+                                   maskWindowOffsetXSpinBox ->setValue(1920);
+                                    emit maskWindowPropertyChanged(maskWindowProperty); });
+
+            connect(moveTo0Button, &QPushButton::clicked, [this]
+                    {
+                                      maskWindowOffsetXSpinBox ->setValue(0);
+                                    emit maskWindowPropertyChanged(maskWindowProperty); });
+        }
+
+        // 掩膜窗口宽度
+        maskWindowWidthSpinBox = new QSpinBox();
+        maskWindowWidthSpinBox->setRange(0, 2000);
+        maskWindowWidthSpinBox->setValue(maskWindowProperty.width);
+        maskWindowWidthSpinBox->setSingleStep(1);
+        addRow(vbox, "Mask窗口宽度", maskWindowWidthSpinBox, true);
+        connect(maskWindowWidthSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                {
+                    maskWindowProperty.width = value;
+                    emit maskWindowPropertyChanged(maskWindowProperty); });
+
+        // 掩膜窗口高度
+        maskWindowHeightSpinBox = new QSpinBox();
+        maskWindowHeightSpinBox->setRange(0, 2000);
+        maskWindowHeightSpinBox->setValue(maskWindowProperty.height);
+        maskWindowHeightSpinBox->setSingleStep(1);
+        addRow(vbox, "Mask窗口高度", maskWindowHeightSpinBox, true);
+        connect(maskWindowHeightSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                {
+                    maskWindowProperty.height = value;
+                    emit maskWindowPropertyChanged(maskWindowProperty); });
+
+        // 掩膜窗口X偏移
+        maskWindowOffsetXSpinBox = new QSpinBox();
+        maskWindowOffsetXSpinBox->setRange(-4096, 4096);
+        maskWindowOffsetXSpinBox->setValue(maskWindowProperty.offsetX);
+        maskWindowOffsetXSpinBox->setSingleStep(1);
+        addRow(vbox, "Mask窗口X偏移", maskWindowOffsetXSpinBox, true);
+        connect(maskWindowOffsetXSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                {
+                    maskWindowProperty.offsetX = value;
+                    emit maskWindowPropertyChanged(maskWindowProperty); });
+
+        // 掩膜窗口Y偏移
+        maskWindowOffsetYSpinBox = new QSpinBox();
+        maskWindowOffsetYSpinBox->setRange(-4096, 4096);
+        maskWindowOffsetYSpinBox->setValue(maskWindowProperty.offsetY);
+        maskWindowOffsetYSpinBox->setSingleStep(1);
+        addRow(vbox, "Mask窗口Y偏移", maskWindowOffsetYSpinBox, true);
+        connect(maskWindowOffsetYSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                {
+                    maskWindowProperty.offsetY = value;
+                    emit maskWindowPropertyChanged(maskWindowProperty); });
+
+        // 分割线
+        {
+            QFrame *line = new QFrame();
+            line->setFrameShape(QFrame::HLine);
+            line->setFrameShadow(QFrame::Sunken);
+            vbox->addWidget(line);
+        }
+
+        // Mask微调项 （是否FlipX FlipY 旋转角度）
+        flipXMaskButton = new QPushButton("X轴镜像");
+        flipXMaskButton->setCheckable(true);
+        flipXMaskButton->setChecked(false);
+        flipYMaskButton = new QPushButton("Y轴镜像");
+        flipYMaskButton->setCheckable(true);
+        flipYMaskButton->setChecked(false);
+        {
+            QHBoxLayout *hbox = new QHBoxLayout();
+            hbox->setContentsMargins(0, 0, 0, 0);
+            hbox->addWidget(flipXMaskButton, 1);
+            hbox->addWidget(flipYMaskButton, 1);
+            vbox->addLayout(hbox);
+        }
+        connect(flipXMaskButton, &QPushButton::clicked, [this]
+                { GlobalResourceManager::getInstance().maskWindow->onFlipped(flipXMaskButton->isChecked(), flipYMaskButton->isChecked()); });
+        connect(flipYMaskButton, &QPushButton::clicked, [this]
+                { GlobalResourceManager::getInstance().maskWindow->onFlipped(flipXMaskButton->isChecked(), flipYMaskButton->isChecked()); });
+
+        translateMaskXSpinBox = new QSpinBox();
+        translateMaskXSpinBox->setRange(-1024, 1024);
+        translateMaskXSpinBox->setValue(0);
+        translateMaskXSpinBox->setSingleStep(1);
+        translateMaskXSpinBox->setSuffix("px");
+        addRow(vbox, "X平移", translateMaskXSpinBox, true);
+
+        translateMaskYSpinBox = new QSpinBox();
+        translateMaskYSpinBox->setRange(-1024, 1024);
+        translateMaskYSpinBox->setValue(0);
+        translateMaskYSpinBox->setSingleStep(1);
+        translateMaskYSpinBox->setSuffix("px");
+        addRow(vbox, "Y平移", translateMaskYSpinBox, true);
+
+        connect(translateMaskXSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                { GlobalResourceManager::getInstance().maskWindow->onTranslated(value, translateMaskYSpinBox->value()); });
+        connect(translateMaskYSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                { GlobalResourceManager::getInstance().maskWindow->onTranslated(translateMaskXSpinBox->value(), value); });
+
+        rotateMaskSpinBox = new QDoubleSpinBox();
+        rotateMaskSpinBox->setRange(-180.0, 180.0);
+        rotateMaskSpinBox->setValue(0);
+        rotateMaskSpinBox->setSingleStep(0.2);
+        rotateMaskSpinBox->setSuffix("°");
+        rotateMaskSpinBox->setDecimals(1);
+        addRow(vbox, "旋转角度", rotateMaskSpinBox, true);
+        connect(rotateMaskSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), [this](double value)
+                { GlobalResourceManager::getInstance().maskWindow->onRotated(value); });
+
+        lumOffsetMaskSpinBox = new QSpinBox();
+        lumOffsetMaskSpinBox->setRange(-255, 255);
+        lumOffsetMaskSpinBox->setValue(0);
+        lumOffsetMaskSpinBox->setSingleStep(1);
+        addRow(vbox, "亮度偏移", lumOffsetMaskSpinBox, true);
+        connect(lumOffsetMaskSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this](int value)
+                { GlobalResourceManager::getInstance().maskWindow->onLumOffsetChanged(value); });
+
+        inverseMaskButton = new QPushButton("全局反相");
+        inverseMaskButton->setCheckable(true);
+        inverseMaskButton->setChecked(false);
+        addRow(vbox, "全局反相", inverseMaskButton, true);
+        connect(inverseMaskButton, &QPushButton::clicked, [this]
+                { GlobalResourceManager::getInstance().maskWindow->onGlobalInverse(inverseMaskButton->isChecked()); });
+
+        onlyRedChannelButton = new QPushButton("只显示红色通道");
+        onlyRedChannelButton->setCheckable(true);
+        onlyRedChannelButton->setChecked(false);
+        addRow(vbox, "通道控制", onlyRedChannelButton, true);
+        connect(onlyRedChannelButton, &QPushButton::clicked, [this]
+                { GlobalResourceManager::getInstance().maskWindow->onOnlyRedChannel(onlyRedChannelButton->isChecked()); });
+
+        // 分割线
+        {
+            QFrame *line = new QFrame();
+            line->setFrameShape(QFrame::HLine);
+            line->setFrameShadow(QFrame::Sunken);
+            vbox->addWidget(line);
+        }
+
+        // 创建 QTabWidget
+        QTabWidget *tabWidget = new QTabWidget();
+        tabWidget->setMinimumHeight(130);
+
+        // 手动模式控件
+        maskDrawModeControl = new MaskMouseDrawModeControl();
+        connect(maskDrawModeControl, &MaskMouseDrawModeControl::drawMode, this, &UserControlArea::onEnterDrawMode);
+        connect(maskDrawModeControl, &MaskMouseDrawModeControl::clearButtonClicked, this, &UserControlArea::onClearMask);
+
+        // 将手动模式控件添加到 QTabWidget
+        tabWidget->addTab(maskDrawModeControl, "手动调光模式");
+
+        // 自动模式控件
+        QWidget *autoModeControl = new QWidget();
+        QVBoxLayout *autoModeLayout = new QVBoxLayout(autoModeControl);
+
+        {
+            QSpinBox *clipMinSpinBox = new QSpinBox();
+            QSpinBox *clipMaxSpinBox = new QSpinBox();
+            QDoubleSpinBox *gammaSpinBox = new QDoubleSpinBox();
+            QDoubleSpinBox *intensitySpinBox = new QDoubleSpinBox();
+            // 第一行 ClipMin + spinbox
+            {
+                QHBoxLayout *hbox1 = new QHBoxLayout();
+                QLabel *label1 = new QLabel("ClipMin");
+                clipMinSpinBox->setRange(0, 255);
+                clipMinSpinBox->setValue(0);
+                hbox1->addWidget(label1, 1);
+                hbox1->addWidget(clipMinSpinBox, 1);
+                autoModeLayout->addLayout(hbox1);
+                // 行为：当ClipMin改变时，组合一个TransferFunction并交给maskWindow处理
+                connect(clipMinSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this, clipMinSpinBox, clipMaxSpinBox, gammaSpinBox, intensitySpinBox]
+                        {
+                            //  确保ClipMin 比 ClipMax 至少小 1
+                            if (clipMinSpinBox->value() >= clipMaxSpinBox->value())
+                            {
+                                clipMinSpinBox->setValue(clipMaxSpinBox->value() - 1);
+                            }
+
+                            TransferFunction transferFunction;
+                            transferFunction.min = clipMinSpinBox->value() / 255.0f;
+                            transferFunction.max = clipMaxSpinBox->value() / 255.0f;
+                            transferFunction.gamma = gammaSpinBox->value();
+                            transferFunction.intensity = intensitySpinBox->value();
+                            GlobalResourceManager::getInstance().maskWindow->onTransferFunctionChanged(transferFunction); });
+            }
+
+            // 第二行 ClipMax + spinbox
+            {
+                QHBoxLayout *hbox1 = new QHBoxLayout();
+                QLabel *label1 = new QLabel("ClipMax");
+                clipMaxSpinBox->setRange(0, 255);
+                clipMaxSpinBox->setValue(255);
+                hbox1->addWidget(label1, 1);
+                hbox1->addWidget(clipMaxSpinBox, 1);
+                autoModeLayout->addLayout(hbox1);
+
+                // 行为：当ClipMax改变时，组合一个TransferFunction并交给maskWindow处理
+                connect(clipMaxSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this, clipMinSpinBox, clipMaxSpinBox, gammaSpinBox, intensitySpinBox]
+                        {
+                            //  确保ClipMax 比 ClipMin 至少大 1
+                            if (clipMaxSpinBox->value() <= clipMinSpinBox->value())
+                            {
+                                clipMaxSpinBox->setValue(clipMinSpinBox->value() + 1);
+                            }
+                           
+
+                            TransferFunction transferFunction;
+                            transferFunction.min = clipMinSpinBox->value() / 255.0f;
+                            transferFunction.max = clipMaxSpinBox->value() / 255.0f;
+                            transferFunction.gamma = gammaSpinBox->value();
+                            transferFunction.intensity = intensitySpinBox->value();
+                            GlobalResourceManager::getInstance().maskWindow->onTransferFunctionChanged(transferFunction); });
+            }
+
+            // 新行： "gamma值" + spnbox 等分
+            {
+                QHBoxLayout *hbox1 = new QHBoxLayout();
+                QLabel *label1 = new QLabel("Gamma校正");
+                gammaSpinBox->setRange(0.01, 10.0);
+                gammaSpinBox->setValue(1.0);
+                gammaSpinBox->setSingleStep(0.01);
+                hbox1->addWidget(label1, 1);
+                hbox1->addWidget(gammaSpinBox, 1);
+                autoModeLayout->addLayout(hbox1);
+
+                // 行为：当gamma改变时，组合一个TransferFunction并交给maskWindow处理
+                connect(gammaSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), [this, clipMinSpinBox, clipMaxSpinBox, gammaSpinBox, intensitySpinBox]
+                        {
+                            TransferFunction transferFunction;
+                            transferFunction.min = clipMinSpinBox->value() / 255.0f;
+                            transferFunction.max = clipMaxSpinBox->value() / 255.0f;
+                            transferFunction.gamma = gammaSpinBox->value();
+                            transferFunction.intensity = intensitySpinBox->value();
+                            GlobalResourceManager::getInstance().maskWindow->onTransferFunctionChanged(transferFunction); });
+            }
+
+            // 新行： "强度" + double spinbox(0~1) 等分
+            {
+                QHBoxLayout *hbox1 = new QHBoxLayout();
+                QLabel *label1 = new QLabel("强度");
+                intensitySpinBox->setRange(0.0, 1.0);
+                intensitySpinBox->setValue(1.0);
+                intensitySpinBox->setSingleStep(0.1);
+                hbox1->addWidget(label1, 1);
+                hbox1->addWidget(intensitySpinBox, 1);
+                autoModeLayout->addLayout(hbox1);
+
+                // 行为：当强度改变时，组合一个TransferFunction并交给maskWindow处理
+                connect(intensitySpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), [this, clipMinSpinBox, clipMaxSpinBox, gammaSpinBox, intensitySpinBox]
+                        {
+                            TransferFunction transferFunction;
+                            transferFunction.min = clipMinSpinBox->value() / 255.0f;
+                            transferFunction.max = clipMaxSpinBox->value() / 255.0f;
+                            transferFunction.gamma = gammaSpinBox->value();
+                            transferFunction.intensity = intensitySpinBox->value();
+                            GlobalResourceManager::getInstance().maskWindow->onTransferFunctionChanged(transferFunction); });
+            }
+        }
+
+        autoModeLayout->addStretch();
+
+        // 将自动模式控件添加到 QTabWidget
+        tabWidget->addTab(autoModeControl, "自动调光模式");
+        tabWidget->setTabIcon(0, QIcon(":/icons8_sign_up.svg"));
+        tabWidget->setTabIcon(1, QIcon(":/icons8_camera_automation.svg"));
+
+        // 将 QTabWidget 添加到布局
+        vbox->addWidget(tabWidget);
+
+        // 连接 QTabWidget 的 currentChanged 信号到 onMaskModeChanged 槽
+        connect(tabWidget, &QTabWidget::currentChanged, this, &UserControlArea::onMaskModeChanged);
+
+        setLayout(vbox);
+    }
+
+public slots:
+    void
+    onMaskModeChanged(int index)
+    {
+        if (index == 0)
+        {
+            Log::info("进入手动调光模式");
+            GlobalResourceManager::getInstance().maskWindow->onContinuousMode(false); // mask window 释放消费权
+            GlobalResourceManager::getInstance().frameRenderer->onEnableUpdate(true); // frame renderer 重新占据消费权
+        }
+        else if (index == 1)
+        {
+            Log::info("进入自动调光模式");
+            GlobalResourceManager::getInstance().frameRenderer->onEnableUpdate(false); // frame renderer 释放消费权
+            GlobalResourceManager::getInstance().maskWindow->onContinuousMode(true);   // mask window 重新占据消费权
+        }
+    }
+
+    void onEnterDrawMode(bool enabled)
+    {
+        emit drawMode(enabled);
+    }
+
+    void onClearMask()
+    {
+        emit clearMask();
+    }
+
+    void onUpdateCurrentValues()
+    {
+        auto &camera = GlobalResourceManager::getInstance().camera;
+
+        // 曝光时间
+        double exporureTime = 0;
+        if (camera->get("ExposureTime", exporureTime))
+        {
+            exposureTimeSpinBox->setValue(exporureTime);
+        }
+        // 增益
+        double gain = 0;
+        if (camera->get("Gain", gain))
+        {
+            gainSpinBox->setValue(gain);
+        }
+        // ROI X偏移
+        int roiOffsetX = 0;
+        if (camera->get("OffsetX", roiOffsetX))
+        {
+            roiOffsetXSpinBox->setValue(roiOffsetX);
+        }
+        // ROI Y偏移
+        int roiOffsetY = 0;
+        if (camera->get("OffsetY", roiOffsetY))
+        {
+            roiOffsetYSpinBox->setValue(roiOffsetY);
+        }
+        // ROI 宽度
+        int roiWidth = 0;
+        if (camera->get("Width", roiWidth))
+        {
+            roiWidthSpinBox->setValue(roiWidth);
+        }
+        // ROI 高度
+        int roiHeight = 0;
+        if (camera->get("Height", roiHeight))
+        {
+            roiHeightSpinBox->setValue(roiHeight);
+        }
+    }
+
+    void onUpdateFPS()
+    {
+        auto &camera = GlobalResourceManager::getInstance().camera;
+
+        double fps = 0;
+        if (camera->get("ResultingFrameRate", fps))
+        {
+            frameRateSpinBox->setValue(fps);
+        }
+    }
+
+signals:
+    void drawMode(bool enabled);
+    void clearMask();
+    void maskWindowPropertyChanged(const MaskWindowProperty &property);
+
+private:
+    void addRow(QVBoxLayout *vbox, const QString &labelText, QWidget *inputWidget, bool expandInputWidget = false)
+    {
+        QHBoxLayout *hbox = new QHBoxLayout();
+        QLabel *label = new QLabel(labelText);
+        hbox->addWidget(label, 1); // 添加标签，占据1份宽度，靠左对齐
+
+        QWidget *wrapperWidget = new QWidget();                      // 创建新的QWidget
+        QHBoxLayout *wrapperLayout = new QHBoxLayout(wrapperWidget); // 为新的QWidget设置布局
+        wrapperLayout->setContentsMargins(0, 0, 0, 0);               // 设置布局的margin为0
+        wrapperLayout->addWidget(inputWidget);                       // 将inputWidget添加到新的QWidget中
+
+        if (expandInputWidget)
+        {
+            wrapperWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+            hbox->addWidget(wrapperWidget, 1); // 添加新的QWidget，占据1份宽度，靠右对齐
+        }
+        else
+        {
+            wrapperWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+            hbox->addWidget(wrapperWidget, 1, Qt::AlignLeft); // 添加新的QWidget，占据1份宽度，靠右对齐
+        }
+
+        vbox->addLayout(hbox);
+    }
+
+private:
+    QPushButton *enableButton; // 开启/关闭
+    QPushButton *streamButton; // 开始/停止
+
+    QComboBox *exposureMode;       // 曝光模式 手动 自动一次 自动连续
+    QSpinBox *exposureTimeSpinBox; // 曝光时间 us
+    QSpinBox *gainSpinBox;         // 增益
+
+    QSpinBox *roiOffsetXSpinBox; // ROI X偏移
+    QSpinBox *roiOffsetYSpinBox; // ROI Y偏移
+    QSpinBox *roiWidthSpinBox;   // ROI 宽度
+    QSpinBox *roiHeightSpinBox;  // ROI 高度
+
+    QPushButton *flipXMaskButton;      // Mask X轴翻转
+    QPushButton *flipYMaskButton;      // Mask Y轴翻转
+    QDoubleSpinBox *rotateMaskSpinBox; // Mask 旋转角度
+    QPushButton *inverseMaskButton;    // Mask 反色
+    QPushButton *onlyRedChannelButton; // 只在红色通道显示
+    QSpinBox *translateMaskXSpinBox;   // Mask X平移
+    QSpinBox *translateMaskYSpinBox;   // Mask Y平移
+    QSpinBox *lumOffsetMaskSpinBox;    // Mask 亮度偏置
+
+    QComboBox *DMDWorkModeComboBox;     // DMD工作模式
+    QPushButton *showMaskWindowButton;  // 显示掩膜窗口
+    QSpinBox *maskWindowWidthSpinBox;   // 掩膜窗口宽度
+    QSpinBox *maskWindowHeightSpinBox;  // 掩膜窗口高度
+    QSpinBox *maskWindowOffsetXSpinBox; // 掩膜窗口X偏移
+    QSpinBox *maskWindowOffsetYSpinBox; // 掩膜窗口Y偏移
+    MaskWindowProperty maskWindowProperty;
+
+    QSpinBox *frameRateSpinBox; // 帧率 不可编辑
+
+    QTimer *frameRateQueryTimer;
+
+    QComboBox *maskModeComboBox;                   // 掩膜模式 手动绘制 灰度自适应
+    MaskMouseDrawModeControl *maskDrawModeControl; // 掩膜绘制模式控制
+};

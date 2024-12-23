@@ -1,0 +1,34 @@
+# 编译输出
+build/
+bin/
+*.o
+*.obj
+*.exe
+
+# 依赖库
+lib/
+*.dll
+*.so
+*.dylib
+
+# IDE和编辑器文件
+*.pro.user
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.sln.docstates
+
+# Qt项目特定
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# 其他临时文件
+*.log
+*.tmp
+*.bak
+*.swp
+*.DS_Store
+
+
