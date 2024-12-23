@@ -10,6 +10,7 @@
 
 #include "GrayMappingWidget.h"
 #include "MultiWindowManager.h"
+#include "CameraControllerBar.h"
 
 #define USE_QLEMENTINE_STYLE
 
@@ -44,6 +45,9 @@ int main(int argc, char *argv[])
 
     QLabel *label1 = new QLabel("Another Window");
     multi.addWindow(label1);
+
+    CameraControllerBar *cameraControllerBar = new CameraControllerBar();
+    multi.addWindow(cameraControllerBar);
 
     multi.resize(800, 600);
     multi.show();
