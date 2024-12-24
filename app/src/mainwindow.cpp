@@ -5,6 +5,7 @@
 
 #include "Common.h"
 #include "Global.hpp"
+#include "CameraViewPanel.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -45,12 +46,13 @@ MainWindow::MainWindow(QWidget *parent)
     rightLayout->setContentsMargins(0, 0, 0, 0);
     splitter->addWidget(rightPanel);
 
-    // 创建 FrameRenderer
-    frameRenderer = GlobalResourceManager::getInstance().frameRenderer;
+    multiWindowManager = new MultiWindowManager(rightPanel);
+    multiWindowManager->addWindow(new CameraViewPanel("hiki", rightPanel));
+    multiWindowManager->addWindow(new CameraViewPanel("test", rightPanel));
 
     // 创建一个垂直的 QSplitter，并添加 FrameRenderer 和 LogWidget
     QSplitter *rightSplitter = new QSplitter(Qt::Vertical, rightPanel);
-    rightSplitter->addWidget(frameRenderer);
+    rightSplitter->addWidget(multiWindowManager);
     rightSplitter->addWidget(logWidget);
     rightSplitter->setStretchFactor(0, 1);
     rightSplitter->setStretchFactor(1, 0);
@@ -59,8 +61,6 @@ MainWindow::MainWindow(QWidget *parent)
     rightLayout->addWidget(rightSplitter);
 
     // connections
-    connect(userControlArea, &UserControlArea::drawMode, frameRenderer, &FrameRenderer::enterDrawMode);
-    connect(userControlArea, &UserControlArea::clearMask, frameRenderer, &FrameRenderer::clearMask);
     connect(userControlArea, &UserControlArea::maskWindowPropertyChanged, GlobalResourceManager::getInstance().maskWindow, &MaskWindow::onPropertyChanged);
 
     // 将 Splitter 设置为主窗口的中心部件

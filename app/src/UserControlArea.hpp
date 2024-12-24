@@ -47,7 +47,7 @@ public:
                             // 产生一个MaskData数据并交给MaskWindow处理
                             MaskData maskData;
                             maskData.continuousMode = false;
-                            maskData.polygons = GlobalResourceManager::getInstance().frameRenderer->getMaskPolygons();
+                            //maskData.polygons = GlobalResourceManager::getInstance().frameRenderer->getMaskPolygons();
                             maskData.globalBackgroundIntensity = globalIntensitySpinBox->value() / 255.0f;
                             GlobalResourceManager::getInstance().maskWindow->onMaskDataChanged(maskData); 
                         }
@@ -81,7 +81,7 @@ public:
                 {
                     MaskData maskData;
                     maskData.continuousMode = false;
-                    maskData.polygons = GlobalResourceManager::getInstance().frameRenderer->getMaskPolygons();
+                    //maskData.polygons = GlobalResourceManager::getInstance().frameRenderer->getMaskPolygons();
                     maskData.globalBackgroundIntensity = globalIntensitySpinBox->value() / 255.0f;
                     GlobalResourceManager::getInstance().maskWindow->onMaskDataChanged(maskData); });
 
@@ -686,20 +686,17 @@ public:
     }
 
 public slots:
-    void
-    onMaskModeChanged(int index)
+    void onMaskModeChanged(int index)
     {
         if (index == 0)
         {
             Log::info("进入手动调光模式");
             GlobalResourceManager::getInstance().maskWindow->onContinuousMode(false); // mask window 释放消费权
-            GlobalResourceManager::getInstance().frameRenderer->onEnableUpdate(true); // frame renderer 重新占据消费权
         }
         else if (index == 1)
         {
             Log::info("进入自动调光模式");
-            GlobalResourceManager::getInstance().frameRenderer->onEnableUpdate(false); // frame renderer 释放消费权
-            GlobalResourceManager::getInstance().maskWindow->onContinuousMode(true);   // mask window 重新占据消费权
+            GlobalResourceManager::getInstance().maskWindow->onContinuousMode(true); // mask window 重新占据消费权
         }
     }
 

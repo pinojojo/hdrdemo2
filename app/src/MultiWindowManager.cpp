@@ -43,7 +43,8 @@ void WindowContainer::paintEvent(QPaintEvent *event)
     painter.setPen(pen);
 
     // 绘制边框
-    painter.drawRect(rect().adjusted(1, 1, -1, -1));
+    // painter.drawRect(rect().adjusted(1, 1, -1, -1));
+    painter.drawRect(rect().adjusted(0, 0, 0, 0));
 }
 
 void WindowContainer::mouseDoubleClickEvent(QMouseEvent *event)
@@ -59,7 +60,7 @@ MultiWindowManager::MultiWindowManager(QWidget *parent)
     : QWidget(parent), m_layout(new QGridLayout(this)), m_maximizedWindow(nullptr)
 {
     m_layout->setSpacing(0);
-    m_layout->setContentsMargins(1, 1, 1, 1);
+    m_layout->setContentsMargins(0, 0, 0, 0);
 }
 
 void MultiWindowManager::addWindow(QWidget *widget)

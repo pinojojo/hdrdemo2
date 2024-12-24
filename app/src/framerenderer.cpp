@@ -404,33 +404,24 @@ FrameRenderer::FrameRenderer(lzx::TripleBuffer<lzx::Frame> *tripleBuffer, QWidge
     setFormat(format);
 
     impl->lastSize = this->size();
+}
 
-    // Timer控制从相机不断获取帧
-    updateTimer = new QTimer(this);
-    connect(updateTimer, &QTimer::timeout, [=]()
-            {
-                qDebug() << "timer timeout";
-                updateTimer->stop();
-                if (frameBuffer)
-                {
-                    lzx::Frame *frame = frameBuffer->consume();
-                    bool needRepaint = false;
-                    if (frame && frame->width() > 0 && frame->height() > 0 && frame->channels() > 0)
-                    {
-                        onFrameChangedDirectMode(frame->data(), frame->width(), frame->height(), frame->channels());
-                        needRepaint = true;
-                    }
-                    frameBuffer->consumeDone();
-                    if (needRepaint)
-                    {
-                        update(); // repaint
-                    }
-                }
-                if (enableUpdate)
-                {
-                    updateTimer->start(10);
-                } });
-    updateTimer->start(10); // 默认构造时就开始更新
+FrameRenderer::FrameRenderer(QWidget *parent)
+{
+    setMouseTracking(true);
+
+    // 设置OpenGL版本
+    QSurfaceFormat format;
+    format.setVersion(3, 3);
+    format.setProfile(QSurfaceFormat::CoreProfile);
+    format.setDepthBufferSize(24);
+    format.setStencilBufferSize(8);
+    format.setSamples(4);
+    format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+    format.setSwapInterval(1);
+    setFormat(format);
+
+    impl->lastSize = this->size();
 }
 
 FrameRenderer::~FrameRenderer()
@@ -473,33 +464,30 @@ void FrameRenderer::paintGL()
     glClear(GL_COLOR_BUFFER_BIT);
 
     // 渲染相机实时采图
+    static bool isFirstTime = true;
+    if (isFirstTime)
     {
-        static bool isFirstTime = true;
-        if (isFirstTime)
-        {
-            isFirstTime = false;
-            onAutoFit();
-        }
-
-        QOpenGLVertexArrayObject::Binder vaoBinder(&impl->vao);
-        impl->shaderProgram->bind();
-
-        // 激活并绑定纹理
-        glActiveTexture(GL_TEXTURE0);
-        impl->cameraTexture->bind();
-
-        impl->shaderProgram->setUniformValue("tex", 0);
-
-        {
-            int canvasSizeWidth = this->width() * this->devicePixelRatio();
-            int canvasSizeHeight = this->height() * this->devicePixelRatio();
-            qDebug() << "canvasSizeWidth:" << canvasSizeWidth << "canvasSizeHeight:" << canvasSizeHeight;
-            impl->shaderProgram->setUniformValue("canvasSize", canvasSizeWidth, canvasSizeHeight);
-        }
-
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        impl->shaderProgram->release();
+        isFirstTime = false;
+        onAutoFit();
     }
+
+    QOpenGLVertexArrayObject::Binder vaoBinder(&impl->vao);
+    impl->shaderProgram->bind();
+
+    // 激活并绑定纹理
+    glActiveTexture(GL_TEXTURE0);
+    impl->cameraTexture->bind();
+    impl->shaderProgram->setUniformValue("tex", 0);
+
+    {
+        int canvasSizeWidth = this->width() * this->devicePixelRatio();
+        int canvasSizeHeight = this->height() * this->devicePixelRatio();
+        qDebug() << "canvasSizeWidth:" << canvasSizeWidth << "canvasSizeHeight:" << canvasSizeHeight;
+        impl->shaderProgram->setUniformValue("canvasSize", canvasSizeWidth, canvasSizeHeight);
+    }
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    impl->shaderProgram->release();
 
     // 绘制边框 (DrawLines模式下)
     if (currentMode == Mode::DrawLines)
@@ -516,6 +504,9 @@ void FrameRenderer::paintGL()
                                         polygon.infillIntensity);
         }
     }
+
+    if (enableUpdate)
+        update();
 }
 
 void FrameRenderer::wheelEvent(QWheelEvent *event)
@@ -595,7 +586,6 @@ void FrameRenderer::onFrameChangedDirectMode(const unsigned char *data, int widt
 
     // 更新纹理
     updateOpenGLTexture(impl->cameraTexture->textureId(), width, height, data, channels);
-    qDebug() << "FrameRenderer::onFrameChangedDirectMode";
 
     // 自适应大小
     needAutoFit ? onAutoFit() : void();
@@ -673,7 +663,6 @@ void FrameRenderer::onEnableUpdate(bool enable)
     if (enable)
     {
         enableUpdate = true;
-        updateTimer->start(10); // 开启定时器
     }
     else
     {

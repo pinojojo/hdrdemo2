@@ -25,8 +25,8 @@ void GrayMappingWidget::setupUI()
 
     // 创建绘图区域
     plotWidget = new QCustomPlot(this);
-    plotWidget->setMinimumHeight(200);
-    plotWidget->setMaximumHeight(200);
+    plotWidget->setMinimumHeight(150);
+
     plotWidget->xAxis->setRange(0, 65535);
     plotWidget->yAxis->setRange(0, 255);
     plotWidget->setBackground(QBrush(QColor(31, 33, 39)));

@@ -16,6 +16,8 @@
 
 #include "logwidget.hpp"
 
+#include "MultiWindowManager.h"
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -32,7 +34,7 @@ private slots:
 
 private:
     QSplitter *splitter;
-    FrameRenderer *frameRenderer;
+    MultiWindowManager *multiWindowManager;
     QWidget *leftPanel;
     QVBoxLayout *leftLayout;
     QWidget *rightPanel;
