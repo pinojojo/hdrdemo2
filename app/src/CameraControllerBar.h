@@ -53,9 +53,12 @@ public:
     // 设置帧率显示
     void setFPS(double fps);
 
+public slots:
+    void setStatus(QString status, QString value);
+
 signals:
-    void connectClicked();
-    void streamClicked();
+    void connectClicked(bool connect);
+    void streamClicked(bool stream);
     void captureClicked();
     void exposureChanged(int value);
     void gainChanged(int value);
@@ -83,11 +86,15 @@ private:
     // 内部方法
     void setupUI();
     void createConnections();
+
     QPushButton *createButton(const QString &iconPath, const QString &tooltip);
+
+    void onRecordClicked();
 
     // 状态
     bool m_isConnected;
     bool m_isStreaming;
+    bool m_isRecording;
 };
 
 #endif // CAMERACONTROLLERBAR_H

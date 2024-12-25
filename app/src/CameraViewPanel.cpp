@@ -15,6 +15,19 @@ CameraViewPanel::CameraViewPanel(QString desc, QWidget *parent)
     {
         m_camera = new lzx::DummyTestCamera();
     }
+
+    // 设置状态回调
+    if (m_camera)
+    {
+        m_camera->setStateChangedCallback([this](const std::string &state, const std::string &value)
+                                          {
+            // 使用Qt::QueuedConnection确保在主线程中更新UI
+            QMetaObject::invokeMethod(this, [this, state, value]() {
+                handleCameraState(state, value);
+            }, Qt::QueuedConnection); });
+    }
+
+    m_frameRenderer->setAssociateCamera(m_camera);
 }
 
 CameraViewPanel::~CameraViewPanel()
@@ -39,18 +52,22 @@ void CameraViewPanel::setCamera(lzx::ICamera *camera)
     m_frameRenderer->setFrameBuffer(m_frameBuffer);
 }
 
-void CameraViewPanel::onConnectClicked()
+void CameraViewPanel::onConnectClicked(bool connect)
 {
     if (!m_camera)
         return;
 
-    if (m_camera->open())
+    if (connect)
     {
-        // 可以在这里更新UI状态
+        m_camera->open();
+    }
+    else
+    {
+        m_camera->close();
     }
 }
 
-void CameraViewPanel::onStreamClicked()
+void CameraViewPanel::onStreamClicked(bool stream)
 {
     if (!m_camera)
         return;
@@ -65,6 +82,7 @@ void CameraViewPanel::onStreamClicked()
         m_camera->start();
         m_frameRenderer->onEnableUpdate(true);
     }
+
     m_isStreaming = !m_isStreaming;
 }
 
@@ -92,7 +110,7 @@ void CameraViewPanel::setupUI()
     m_layout->setSpacing(0);
 
     // 创建渲染器
-    m_frameRenderer = new FrameRenderer(m_frameBuffer, this);
+    m_frameRenderer = new FrameRenderer(this);
     m_layout->addWidget(m_frameRenderer, 1); // 1表示拉伸比例
 
     // 创建控制栏
@@ -114,4 +132,9 @@ void CameraViewPanel::createConnections()
             this, &CameraViewPanel::onExposureChanged);
     connect(m_controlBar, &CameraControllerBar::gainChanged,
             this, &CameraViewPanel::onGainChanged);
+}
+
+void CameraViewPanel::handleCameraState(const std::string &state, const std::string &value)
+{
+    m_controlBar->setStatus(QString::fromStdString(state), QString::fromStdString(value));
 }

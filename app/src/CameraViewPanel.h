@@ -21,8 +21,8 @@ public:
     void setCamera(lzx::ICamera *camera);
 
 private slots:
-    void onConnectClicked();
-    void onStreamClicked();
+    void onConnectClicked(bool connect);
+    void onStreamClicked(bool stream);
     void onCaptureClicked();
     void onExposureChanged(int value);
     void onGainChanged(int value);
@@ -30,6 +30,7 @@ private slots:
 private:
     void setupUI();
     void createConnections();
+    void handleCameraState(const std::string &state, const std::string &value);
 
 private:
     QString m_desc;

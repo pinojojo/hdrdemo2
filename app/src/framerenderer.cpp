@@ -40,7 +40,7 @@ static const char *basicFragmentShader =
     "   vec2 textureCoord = vec2( canvasCoord.x*(canvasBoundary.y-canvasBoundary.x) + canvasBoundary.x, canvasCoord.y*(canvasBoundary.w-canvasBoundary.z) + canvasBoundary.z);\n"
     "   vec4 texColor = texture(tex,textureCoord);\n"
     "   outColor = vec4(texColor.r, texColor.r,texColor.r, 1.0);\n"
-    "  // outColor = vec4(canvasCoord,0.0, 1.0);\n"
+    "   //outColor = vec4(canvasCoord,0.0, 1.0);\n"
     "}\n";
 
 namespace render_utility
@@ -263,6 +263,50 @@ struct FrameRenderer::Impl
     QOpenGLBuffer vbo;
     QOpenGLBuffer ebo;
 
+    // 中间层 FBO 相关
+    GLuint fbo = 0;
+    GLuint intermediateTexture = 0;
+    QSize fboSize;
+
+    // 重新创建或调整FBO大小的方法
+    void resizeFramebuffer(int width, int height)
+    {
+        if (fboSize.width() == width && fboSize.height() == height)
+        {
+            return; // 尺寸没变，无需重建
+        }
+
+        // 记录新尺寸
+        fboSize = QSize(width, height);
+
+        // 删除旧的纹理
+        if (intermediateTexture)
+        {
+            owner.glDeleteTextures(1, &intermediateTexture);
+        }
+
+        // 创建新的纹理
+        owner.glGenTextures(1, &intermediateTexture);
+        owner.glBindTexture(GL_TEXTURE_2D, intermediateTexture);
+        // 使用RGB8格式
+        owner.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+        owner.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        owner.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        owner.glBindTexture(GL_TEXTURE_2D, 0);
+
+        // 重新绑定FBO
+        owner.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        owner.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, intermediateTexture, 0);
+
+        // 检查FBO状态
+        if (owner.glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        {
+            Log::error("Framebuffer is not complete!");
+        }
+
+        owner.glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
     // image transform
     render_utility::GLSL_Rect frame; // OpenGL视口在纹理坐标系的位置和大小信息
     float scaleFactor = 1.0f;        // 缩放因子
@@ -371,6 +415,31 @@ struct FrameRenderer::Impl
         {
             Log::error(QString("OpenGL Error occured in FrameRenderer: %1").arg(error));
         }
+
+        // 创建和设置中间层 FBO
+        {
+            owner.glGenFramebuffers(1, &fbo);
+            owner.glGenTextures(1, &intermediateTexture);
+
+            // 设置中间纹理，使用RGB8格式
+            owner.glBindTexture(GL_TEXTURE_2D, intermediateTexture);
+            owner.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 1024, 1024, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+            owner.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            owner.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            owner.glBindTexture(GL_TEXTURE_2D, 0);
+
+            // 绑定FBO和纹理
+            owner.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            owner.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, intermediateTexture, 0);
+
+            // 检查FBO状态
+            if (owner.glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            {
+                Log::error("Framebuffer is not complete!");
+            }
+
+            owner.glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
     }
 
     std::vector<QVector2D> ndcPoints(const std::vector<QVector2D> &pointsInTexture) const
@@ -387,26 +456,8 @@ struct FrameRenderer::Impl
     }
 };
 
-FrameRenderer::FrameRenderer(lzx::TripleBuffer<lzx::Frame> *tripleBuffer, QWidget *parent)
-    : QOpenGLWidget(parent), impl(new Impl(*this)), frameBuffer(tripleBuffer)
-{
-    setMouseTracking(true);
-
-    // 设置OpenGL版本
-    QSurfaceFormat format;
-    format.setVersion(3, 3);
-    format.setProfile(QSurfaceFormat::CoreProfile);
-    format.setDepthBufferSize(24);
-    format.setStencilBufferSize(8);
-    format.setSamples(4);
-    format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
-    format.setSwapInterval(1);
-    setFormat(format);
-
-    impl->lastSize = this->size();
-}
-
 FrameRenderer::FrameRenderer(QWidget *parent)
+    : QOpenGLWidget(parent), impl(new Impl(*this))
 {
     setMouseTracking(true);
 
@@ -422,6 +473,8 @@ FrameRenderer::FrameRenderer(QWidget *parent)
     setFormat(format);
 
     impl->lastSize = this->size();
+
+    frameData.resize(2048 * 2048 * 4); // 足够大
 }
 
 FrameRenderer::~FrameRenderer()
@@ -458,36 +511,48 @@ void FrameRenderer::initializeGL()
 
 void FrameRenderer::paintGL()
 {
-    qDebug() << "FrameRenderer::paintGL";
-
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // 渲染相机实时采图
-    static bool isFirstTime = true;
-    if (isFirstTime)
+    // 更新图像数据
+    bool updateSuccess = true;
+    if (associateCamera)
     {
-        isFirstTime = false;
+        if (associateCamera->streaming())
+        {
+            int width, height, channels, bitDepth;
+            if (associateCamera->getFrame(frameData.data(), width, height, channels, bitDepth))
+            {
+                onFrameChangedDirectMode(frameData.data(), width, height, channels, bitDepth);
+                updateSuccess = true;
+            }
+        }
+    }
+
+    if (m_isFirstUpdate)
+    {
+        m_isFirstUpdate = false;
         onAutoFit();
     }
 
-    QOpenGLVertexArrayObject::Binder vaoBinder(&impl->vao);
-    impl->shaderProgram->bind();
-
-    // 激活并绑定纹理
-    glActiveTexture(GL_TEXTURE0);
-    impl->cameraTexture->bind();
-    impl->shaderProgram->setUniformValue("tex", 0);
-
+    // 绘制相机画面部分
+    if (updateSuccess)
     {
+        QOpenGLVertexArrayObject::Binder vaoBinder(&impl->vao);
+        impl->shaderProgram->bind();
+
+        // 激活并绑定纹理
+        glActiveTexture(GL_TEXTURE0);
+        impl->cameraTexture->bind();
+        impl->shaderProgram->setUniformValue("tex", 0);
+
         int canvasSizeWidth = this->width() * this->devicePixelRatio();
         int canvasSizeHeight = this->height() * this->devicePixelRatio();
-        qDebug() << "canvasSizeWidth:" << canvasSizeWidth << "canvasSizeHeight:" << canvasSizeHeight;
         impl->shaderProgram->setUniformValue("canvasSize", canvasSizeWidth, canvasSizeHeight);
-    }
 
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    impl->shaderProgram->release();
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        impl->shaderProgram->release();
+    }
 
     // 绘制边框 (DrawLines模式下)
     if (currentMode == Mode::DrawLines)
@@ -505,8 +570,7 @@ void FrameRenderer::paintGL()
         }
     }
 
-    if (enableUpdate)
-        update();
+    update();
 }
 
 void FrameRenderer::wheelEvent(QWheelEvent *event)
@@ -556,16 +620,15 @@ void FrameRenderer::wheelEvent(QWheelEvent *event)
 }
 
 // 更新帧 (Direct模式)
-void FrameRenderer::onFrameChangedDirectMode(const unsigned char *data, int width, int height, int channels)
+void FrameRenderer::onFrameChangedDirectMode(const unsigned char *data, int width, int height, int channels, int bitDepth)
 {
     bool needAutoFit = false;
 
-    static bool firstUpdateFromCamera = true;
-
-    // 检查是否size一致
-    if (!impl->cameraTexture || QSize(impl->cameraTexture->width(), impl->cameraTexture->height()) != QSize(width, height) || firstUpdateFromCamera)
+    // 重建纹理
+    if (!impl->cameraTexture || QSize(impl->cameraTexture->width(), impl->cameraTexture->height()) != QSize(width, height) || m_isFirstUpdate)
     {
-        qDebug() << "FrameRenderer -> Recreate Texture";
+        QString log = "recreating camera texture: width " + QString::number(width) + " height " + QString::number(height) + " channels " + QString::number(channels) + " bitDepth " + QString::number(bitDepth);
+        Log::info(log.toStdString().c_str());
 
         // 删除旧的纹理
         delete impl->cameraTexture;
@@ -573,7 +636,26 @@ void FrameRenderer::onFrameChangedDirectMode(const unsigned char *data, int widt
         // 创建一个新的纹理
         impl->cameraTexture = new QOpenGLTexture(QOpenGLTexture::Target2D);
         impl->cameraTexture->setSize(width, height);
-        impl->cameraTexture->setFormat(QOpenGLTexture::RGBA8_UNorm);
+        QOpenGLTexture::TextureFormat format;
+        switch (channels)
+        {
+        case 1:
+            format = (bitDepth <= 8) ? QOpenGLTexture::R8_UNorm : QOpenGLTexture::R16_UNorm;
+            break;
+        case 2:
+            format = (bitDepth <= 8) ? QOpenGLTexture::RG8_UNorm : QOpenGLTexture::RG16_UNorm;
+            break;
+        case 3:
+            format = (bitDepth <= 8) ? QOpenGLTexture::RGB8_UNorm : QOpenGLTexture::RGB16_UNorm;
+            break;
+        case 4:
+            format = (bitDepth <= 8) ? QOpenGLTexture::RGBA8_UNorm : QOpenGLTexture::RGBA16_UNorm;
+            break;
+        default:
+            Log::error(QString("Unsupported number of channels: %1").arg(channels));
+            return;
+        }
+        impl->cameraTexture->setFormat(format);
         impl->cameraTexture->setWrapMode(QOpenGLTexture::ClampToBorder);
         impl->cameraTexture->setBorderColor(QColor(Qt::black));
         impl->cameraTexture->allocateStorage();
@@ -581,11 +663,13 @@ void FrameRenderer::onFrameChangedDirectMode(const unsigned char *data, int widt
         impl->cameraTexture->setMagnificationFilter(QOpenGLTexture::Linear);
 
         needAutoFit = true;
-        firstUpdateFromCamera = false;
+
+        if (m_isFirstUpdate)
+            m_isFirstUpdate = false;
     }
 
     // 更新纹理
-    updateOpenGLTexture(impl->cameraTexture->textureId(), width, height, data, channels);
+    updateOpenGLTexture(impl->cameraTexture->textureId(), width, height, data, channels, bitDepth);
 
     // 自适应大小
     needAutoFit ? onAutoFit() : void();
@@ -974,12 +1058,30 @@ void FrameRenderer::resizeGL(int width, int height)
 }
 
 // 更新纹理内容
-void FrameRenderer::updateOpenGLTexture(GLuint textureID, int width, int height, const GLubyte *data, int bytesPerPixel)
+void FrameRenderer::updateOpenGLTexture(GLuint textureID, int width, int height, const GLubyte *data, int channels, int bitDepth)
 {
     GLenum availFormats[] = {GL_RED, GL_RG, GL_RGB, GL_RGBA};
-    GLenum format = availFormats[bytesPerPixel - 1];
+    GLenum format = availFormats[channels - 1];
+    GLenum type = (bitDepth <= 8) ? GL_UNSIGNED_BYTE : GL_UNSIGNED_SHORT;
+
+    // 计算对齐要求
+    int bytesPerPixel = channels * (bitDepth <= 8 ? 1 : 2);
+    int alignment = 1;
+    if (bytesPerPixel % 8 == 0)
+        alignment = 8;
+    else if (bytesPerPixel % 4 == 0)
+        alignment = 4;
+    else if (bytesPerPixel % 2 == 0)
+        alignment = 2;
+
     glBindTexture(GL_TEXTURE_2D, textureID);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, (bytesPerPixel == 4) ? 4 : 1);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, data);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, type, data);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR)
+    {
+        Log::error(QString("OpenGL Error in updateOpenGLTexture: %1").arg(error));
+    }
 }

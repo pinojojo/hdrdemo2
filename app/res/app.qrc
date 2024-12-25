@@ -17,5 +17,7 @@
 		<file>icons8_unsplash.svg</file>
 		<file>icons8_record.svg</file>
 		<file>icons8_histogram.svg</file>
+		<file>icons8_lock.svg</file>
+		<file>icons8_unlock.svg</file>
 	</qresource>
 </RCC>

@@ -30,10 +30,9 @@ void CameraControllerBar::setupUI()
     m_connectButton = createButton(":/icons8_broken_link.svg", tr("Connect to camera"));
     m_streamButton = createButton(":/icons8_play.svg", tr("Start/Stop stream"));
     m_captureButton = createButton(":/icons8_unsplash.svg", tr("Capture frame"));
-    m_recordingButton = createButton(":/icons8_record.svg", tr("Start/Stop recording"));
+    m_recordingButton = createButton(":/icons8_video_record.svg", tr("Start/Stop recording"));
     m_lutButton = createButton(":/icons8_histogram.svg", tr("Open LUT editor"));
-    m_recordingButton->setCheckable(true);
-    m_recordingButton->setChecked(true);
+
     m_exposureSpinBox = new QSpinBox(this);
     m_exposureSpinBox->setPrefix("Exp: ");
     m_exposureSpinBox->setRange(0, 1000000);
@@ -69,6 +68,10 @@ void CameraControllerBar::setupUI()
     // 初始状态设置
     m_streamButton->setEnabled(false);
     m_captureButton->setEnabled(false);
+    m_recordingButton->setEnabled(false);
+    m_lutButton->setEnabled(false);
+    m_exposureSpinBox->setEnabled(false);
+    m_gainSpinBox->setEnabled(false);
 
     // 设置固定高度
     setFixedHeight(30);
@@ -86,22 +89,31 @@ QPushButton *CameraControllerBar::createButton(const QString &iconPath, const QS
     return button;
 }
 
+void CameraControllerBar::onRecordClicked()
+{
+    m_isRecording = !m_isRecording;
+
+    if (m_isRecording)
+    {
+        m_recordingButton->setIcon(QIcon(":/icons8_video_record.svg"));
+    }
+    else
+    {
+        m_recordingButton->setIcon(QIcon(":/icons8_record.svg"));
+    }
+}
+
 void CameraControllerBar::createConnections()
 {
     connect(m_connectButton, &QPushButton::clicked, this, [this]()
-            {
-        m_isConnected = !m_isConnected;
-        m_connectButton->setIcon(QIcon(m_isConnected ? ":/icons8_brokern_link.svg" : ":/icons8_link.svg"));
-        
-        emit connectClicked(); });
+            { emit connectClicked(!m_isConnected); });
 
     connect(m_streamButton, &QPushButton::clicked, this, [this]()
-            {
-        m_isStreaming = !m_isStreaming;
-        m_streamButton->setIcon(QIcon(m_isStreaming ? ":/icons/stop.svg" : ":/icons/stream.svg"));
-        emit streamClicked(); });
+            { emit streamClicked(!m_isStreaming); });
 
     connect(m_captureButton, &QPushButton::clicked, this, &CameraControllerBar::captureClicked);
+
+    connect(m_recordingButton, &QPushButton::clicked, this, &CameraControllerBar::onRecordClicked);
 
     connect(m_exposureSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
             this, &CameraControllerBar::exposureChanged);
@@ -127,20 +139,59 @@ void CameraControllerBar::setFPS(double fps)
     m_fpsLabel->setText(QString::number(fps, 'f', 1) + " FPS");
 }
 
+void CameraControllerBar::setStatus(QString status, QString value)
+{
+    if (status == "open")
+    {
+        if (value == "true")
+        {
+            m_isConnected = true;
+            m_connectButton->setIcon(QIcon(":/icons8_link.svg"));
+        }
+        else if (value == "false")
+        {
+            m_isConnected = false;
+            m_connectButton->setIcon(QIcon(":/icons8_broken_link.svg"));
+        }
+
+        // 根据连接状态启用/禁用其他控件
+        m_streamButton->setEnabled(m_isConnected);
+        m_captureButton->setEnabled(m_isConnected);
+        m_recordingButton->setEnabled(m_isConnected);
+        m_lutButton->setEnabled(m_isConnected);
+        m_exposureSpinBox->setEnabled(m_isConnected);
+        m_gainSpinBox->setEnabled(m_isConnected);
+    }
+
+    if (status == "stream")
+    {
+        if (value == "true")
+        {
+            m_isStreaming = true;
+            m_streamButton->setIcon(QIcon(":/icons8_stop.svg"));
+        }
+        else if (value == "false")
+        {
+            m_isStreaming = false;
+            m_streamButton->setIcon(QIcon(":/icons8_play.svg"));
+        }
+    }
+}
+
 void CameraControllerBar::paintEvent(QPaintEvent *event)
 {
     QWidget::paintEvent(event);
 
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
+    // painter.setRenderHint(QPainter::Antialiasing);
 
     // 设置画笔
-    QPen pen(QColor(255, 255, 255, 22));
-    pen.setWidth(.5);
+    QPen pen(QColor(50, 55, 55));
+    pen.setWidth(1);
     painter.setPen(pen);
 
     // 绘制边框
-    painter.drawRect(rect().adjusted(0, 1, 0, -1));
+    painter.drawRect(rect().adjusted(0, 1, 0, 1));
 }
 
 LutPopupWindow::LutPopupWindow(QWidget *parent)

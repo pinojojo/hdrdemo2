@@ -11,6 +11,8 @@
 #include <QDebug>
 #include <QTimer>
 #include <string>
+#include <QScrollBar>
+#include <QPushButton>
 
 enum LogType
 {
@@ -44,17 +46,17 @@ public:
     static void addInfoLog(const QString &text)
     {
         QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-        instance().addLog({timestamp + " [INFO] : " + text, Info});
+        instance().addLog({timestamp + " info -> " + text, Info});
     }
     static void addWarnLog(const QString &text)
     {
         QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-        instance().addLog({timestamp + " [WARN] : " + text, Warn});
+        instance().addLog({timestamp + " warn -> " + text, Warn});
     }
     static void addErrorLog(const QString &text)
     {
         QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-        instance().addLog({timestamp + " [ERROR] : " + text, Error});
+        instance().addLog({timestamp + " error-> " + text, Error});
     }
 
 private:
@@ -85,14 +87,16 @@ public:
 private slots:
     void scrollToBottom()
     {
-        // 假设你的 view 变量名为 view
-        view->scrollToBottom();
+        if (m_autoScroll)
+            view->scrollToBottom();
     }
 
 private:
     QListView *view;
     LogListModel *model;
     QTimer *timer;
+    bool m_autoScroll = true;
+    QPushButton *autoScrollButton;
 };
 
 #endif // LOGWIDGET_HPP

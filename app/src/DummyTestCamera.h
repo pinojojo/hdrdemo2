@@ -22,7 +22,8 @@ namespace lzx
         virtual bool start() override;
         virtual bool stop() override;
         virtual bool snap() override;
-        virtual bool getFrame(unsigned char *buffer, int &width, int &height, int &channels) override;
+        virtual bool streaming() override { return m_isStreaming; }
+        virtual bool getFrame(unsigned char *buffer, int &width, int &height, int &channels, int &bitDepth) override;
 
         // 实现一些参数设置和获取
         virtual bool set(const std::string &name, int value) override;
@@ -35,6 +36,7 @@ namespace lzx
         int m_width;
         int m_height;
         int m_channels;
+        int m_bitDepth;
 
         TripleBuffer<Frame> m_frameBuffer;
 
