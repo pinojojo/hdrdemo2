@@ -1,0 +1,585 @@
+
+Back to Qt.io
+Contact Us Blog Download Qt
+Qt documentation
+Archives
+Snapshots
+
+Qt 6.8 LTS
+Reference
+Overview
+Getting Started
+Development Tools
+Qt Fundamentals
+Building UIs with Qt Quick
+Building UIs with Qt Widgets
+Data Input Output
+Network and Connectivity
+Graphics and Printing
+Mobile Development
+Search
+Qt 6.8
+Qt Multimedia
+C++ Classes
+QtMultimedia
+QMediaRecorder
+QMediaRecorder Class
+The QMediaRecorder class is used for encoding and recording a capture session. More...
+
+Header:	#include <QMediaRecorder>
+CMake:	find_package(Qt6 REQUIRED COMPONENTS Multimedia)
+target_link_libraries(mytarget PRIVATE Qt6::Multimedia)
+qmake:	QT += multimedia
+In QML:	MediaRecorder
+Inherits:	QObject
+List of all members, including inherited members
+Public Types
+enum	EncodingMode { ConstantQualityEncoding, ConstantBitRateEncoding, AverageBitRateEncoding, TwoPassEncoding }
+enum	Error { NoError, ResourceError, FormatError, OutOfSpaceError, LocationNotWritable }
+enum	Quality { VeryLowQuality, LowQuality, NormalQuality, HighQuality, VeryHighQuality }
+enum	RecorderState { StoppedState, RecordingState, PausedState }
+Properties
+actualLocation : const QUrl
+autoStop : bool
+duration : const qint64
+error : const QMediaRecorder::Error
+errorString : const QString
+mediaFormat : QMediaFormat
+metaData : QMediaMetaData
+outputLocation : QUrl
+quality : Quality
+recorderState : const QMediaRecorder::RecorderState
+Public Functions
+QMediaRecorder(QObject *parent = nullptr)
+virtual	~QMediaRecorder()
+QUrl	actualLocation() const
+void	addMetaData(const QMediaMetaData &metaData)
+int	audioBitRate() const
+int	audioChannelCount() const
+int	audioSampleRate() const
+bool	autoStop() const
+QMediaCaptureSession *	captureSession() const
+qint64	duration() const
+QMediaRecorder::EncodingMode	encodingMode() const
+QMediaRecorder::Error	error() const
+QString	errorString() const
+bool	isAvailable() const
+QMediaFormat	mediaFormat() const
+QMediaMetaData	metaData() const
+QIODevice *	outputDevice() const
+QUrl	outputLocation() const
+QMediaRecorder::Quality	quality() const
+QMediaRecorder::RecorderState	recorderState() const
+void	setAudioBitRate(int bitRate)
+void	setAudioChannelCount(int channels)
+void	setAudioSampleRate(int sampleRate)
+void	setAutoStop(bool autoStop)
+void	setEncodingMode(QMediaRecorder::EncodingMode mode)
+void	setMediaFormat(const QMediaFormat &format)
+void	setMetaData(const QMediaMetaData &metaData)
+void	setOutputDevice(QIODevice *device)
+void	setOutputLocation(const QUrl &location)
+void	setQuality(QMediaRecorder::Quality quality)
+void	setVideoBitRate(int bitRate)
+void	setVideoFrameRate(qreal frameRate)
+void	setVideoResolution(const QSize &size)
+void	setVideoResolution(int width, int height)
+int	videoBitRate() const
+qreal	videoFrameRate() const
+QSize	videoResolution() const
+Public Slots
+void	pause()
+void	record()
+void	stop()
+Signals
+void	actualLocationChanged(const QUrl &location)
+void	audioBitRateChanged()
+void	audioChannelCountChanged()
+void	audioSampleRateChanged()
+void	autoStopChanged()
+void	durationChanged(qint64 duration)
+void	encoderSettingsChanged()
+void	encodingModeChanged()
+void	errorChanged()
+void	errorOccurred(QMediaRecorder::Error error, const QString &errorString)
+void	mediaFormatChanged()
+void	metaDataChanged()
+void	qualityChanged()
+void	recorderStateChanged(QMediaRecorder::RecorderState state)
+void	videoBitRateChanged()
+void	videoFrameRateChanged()
+void	videoResolutionChanged()
+Detailed Description
+Use the QMediaRecorder class to encode and record media generated in QMediaCaptureSession. You can generate:
+
+Audio. Use QAudioInput or QAudioBufferInput.
+Video. Use QCamera, QScreenCapture, QWindowCapture, or QVideoFrameInput.
+To record media, connect a generator to a corresponding media capture session.
+
+Performance of video encoding and recording is limited by the hardware, the operating system, the installed graphic drivers, and the input video format. If QCamera, QScreenCapture, or QWindowCapture produces video frames faster than QMediaRecorder can encode and record them, the recorder may drop some frames. This is likely to occur if the input frame resolution is high, 4K for example, and hardware-accelerated encoding is unavailable. If you generate input video via QVideoFrameInput, the method QVideoFrameInput::sendVideoFrame will do nothing and return false whenever this limitation is reached and the internal frame queue is full. Rely on the signal QVideoFrameInput::readyToSendVideoFrame to know when the recorder is ready to receive new frames again. If you cannot change the rate of video frame generation and dropping frames is undesirable, we recommend implementing your own frame queue on top of QVideoFrameInput, considering the memory limitations of the hardware.
+
+QMediaCaptureSession session;
+QAudioInput audioInput;
+session.setAudioInput(&input);
+QMediaRecorder recorder;
+session.setRecorder(&recorder);
+recorder.setQuality(QMediaRecorder::HighQuality);
+recorder.setOutputLocation(QUrl::fromLocalFile("test.mp3"));
+recorder.record();
+
+Member Type Documentation
+enum QMediaRecorder::EncodingMode
+Enumerates encoding modes.
+
+Constant	Value	Description
+QMediaRecorder::ConstantQualityEncoding	0	Encoding will aim to have a constant quality, adjusting bitrate to fit.
+QMediaRecorder::ConstantBitRateEncoding	1	Encoding will use a constant bit rate, adjust quality to fit.
+QMediaRecorder::AverageBitRateEncoding	2	Encoding will try to keep an average bitrate setting, but will use more or less as needed.
+QMediaRecorder::TwoPassEncoding	3	The media will first be processed to determine the characteristics, and then processed a second time allocating more bits to the areas that need it.
+enum QMediaRecorder::Error
+Constant	Value	Description
+QMediaRecorder::NoError	0	No Errors.
+QMediaRecorder::ResourceError	1	Device is not ready or not available.
+QMediaRecorder::FormatError	2	Current format is not supported.
+QMediaRecorder::OutOfSpaceError	3	No space left on device.
+QMediaRecorder::LocationNotWritable	4	The output location is not writable.
+enum QMediaRecorder::Quality
+Enumerates quality encoding levels.
+
+Constant	Value
+QMediaRecorder::VeryLowQuality	0
+QMediaRecorder::LowQuality	1
+QMediaRecorder::NormalQuality	2
+QMediaRecorder::HighQuality	3
+QMediaRecorder::VeryHighQuality	4
+enum QMediaRecorder::RecorderState
+Constant	Value	Description
+QMediaRecorder::StoppedState	0	The recorder is not active.
+QMediaRecorder::RecordingState	1	The recording is requested.
+QMediaRecorder::PausedState	2	The recorder is paused.
+Property Documentation
+[read-only]actualLocation : const QUrl
+This property holds the actual location of the last media content.
+
+The actual location is reset when a new outputLocation or a non-null outputDevice is assigned. When record() is invoked and outputDevice is null or not writable, the recorder generates the actual location basing on the following rules.
+
+If outputLocation is empty, a directory, or a file without an extension, the recorder generates the appropriate extension based on the selected media format and system MIME types.
+If outputLocation is a directory, the recorder generates a new file name within it.
+If outputLocation is empty, the recorder generates a new file name in the system-specific directory for audio or video.
+The recorder generates the actual location before emitting recorderStateChanged(RecordingState).
+Access functions:
+
+QUrl	actualLocation() const
+Notifier signal:
+
+void	actualLocationChanged(const QUrl &location)
+autoStop : bool
+This property controls whether the media recorder stops automatically when all media inputs have reported the end of the stream or have been deactivated.
+
+The end of the stream is reported by sending an empty media frame, which you can send explicitly via QVideoFrameInput or QAudioBufferInput.
+
+Video inputs, specificly, QCamera, QScreenCapture and QWindowCapture, can be deactivated via the function setActive.
+
+Defaults to false.
+
+QMediaRecorder::autoStop is only supported with the FFmpeg backend.
+
+Access functions:
+
+bool	autoStop() const
+void	setAutoStop(bool autoStop)
+Notifier signal:
+
+void	autoStopChanged()
+See also QCamera, QScreenCapture, and QWindowCapture.
+
+[read-only]duration : const qint64
+This property holds the recorded media duration in milliseconds.
+
+Access functions:
+
+qint64	duration() const
+Notifier signal:
+
+void	durationChanged(qint64 duration)
+[read-only]error : const QMediaRecorder::Error
+Returns the current error state.
+
+Access functions:
+
+QMediaRecorder::Error	error() const
+Notifier signal:
+
+void	errorChanged()
+See also errorString().
+
+[read-only]errorString : const QString
+Returns a string describing the current error state.
+
+Access functions:
+
+QString	errorString() const
+Notifier signal:
+
+void	errorChanged()
+See also error().
+
+mediaFormat : QMediaFormat
+Returns the recording media format.
+
+Access functions:
+
+QMediaFormat	mediaFormat() const
+void	setMediaFormat(const QMediaFormat &format)
+Notifier signal:
+
+void	mediaFormatChanged()
+metaData : QMediaMetaData
+Returns the metaData associated with the recording.
+
+Access functions:
+
+QMediaMetaData	metaData() const
+void	setMetaData(const QMediaMetaData &metaData)
+Notifier signal:
+
+void	metaDataChanged()
+outputLocation : QUrl
+This property holds the destination location of media content.
+
+Setting the location can fail, for example when the service supports only local file system locations but a network URL was passed. If the operation fails, the errorOccured() signal is emitted.
+
+The output location is ignored if a writable outputDevice has been assigned to the recorder. This behavior may change in the future, so we recommend setting only one output, either outputLocation or outputDevice.
+
+The output location can be empty, a directory, or a file. The path to a directory or file can be relative or absolute. The record() method generates the actual location according to the specified output location and system-specific settings. Refer to the actualLocation property description for details.
+
+Access functions:
+
+QUrl	outputLocation() const
+void	setOutputLocation(const QUrl &location)
+See also actualLocation and outputDevice().
+
+quality : Quality
+Returns the recording quality.
+
+Access functions:
+
+QMediaRecorder::Quality	quality() const
+void	setQuality(QMediaRecorder::Quality quality)
+Notifier signal:
+
+void	qualityChanged()
+[read-only]recorderState : const QMediaRecorder::RecorderState
+This property holds the current state of the media recorder.
+
+The state property represents the user request and is changed synchronously during record(), pause() or stop() calls. Recorder state may also change asynchronously when recording fails.
+
+Access functions:
+
+QMediaRecorder::RecorderState	recorderState() const
+Notifier signal:
+
+void	recorderStateChanged(QMediaRecorder::RecorderState state)
+Member Function Documentation
+QMediaRecorder::QMediaRecorder(QObject *parent = nullptr)
+Constructs a media recorder. The media recorder is a child of parent.
+
+[virtual noexcept]QMediaRecorder::~QMediaRecorder()
+Destroys a media recorder object.
+
+[signal]void QMediaRecorder::actualLocationChanged(const QUrl &location)
+Signals that the actual location of the recorded media has changed. This signal is usually emitted when recording starts.
+
+Note: Notifier signal for property actualLocation.
+
+void QMediaRecorder::addMetaData(const QMediaMetaData &metaData)
+Adds metaData to the recorded media.
+
+int QMediaRecorder::audioBitRate() const
+Returns the bit rate of the compressed audio stream in bits per second.
+
+Note: Getter function for property audioBitRate.
+
+See also setAudioBitRate().
+
+[signal]void QMediaRecorder::audioBitRateChanged()
+Signals when the recording audio bit rate changes.
+
+Note: Notifier signal for property audioBitRate.
+
+int QMediaRecorder::audioChannelCount() const
+Returns the number of audio channels.
+
+Note: Getter function for property audioChannelCount.
+
+See also setAudioChannelCount().
+
+[signal]void QMediaRecorder::audioChannelCountChanged()
+Signals when the recording audio channel count changes.
+
+Note: Notifier signal for property audioChannelCount.
+
+int QMediaRecorder::audioSampleRate() const
+Returns the audio sample rate in Hz.
+
+Note: Getter function for property audioSampleRate.
+
+See also setAudioSampleRate().
+
+[signal]void QMediaRecorder::audioSampleRateChanged()
+Signals when the recording audio sample rate changes.
+
+Note: Notifier signal for property audioSampleRate.
+
+QMediaCaptureSession *QMediaRecorder::captureSession() const
+Returns the media capture session.
+
+[signal]void QMediaRecorder::durationChanged(qint64 duration)
+Signals that the duration of the recorded media has changed.
+
+Note: Notifier signal for property duration.
+
+[signal]void QMediaRecorder::encoderSettingsChanged()
+Signals when the encoder settings change.
+
+QMediaRecorder::EncodingMode QMediaRecorder::encodingMode() const
+Returns the encoding mode.
+
+Note: Getter function for property encodingMode.
+
+See also setEncodingMode() and EncodingMode.
+
+[signal]void QMediaRecorder::encodingModeChanged()
+Signals when the encoding mode changes.
+
+Note: Notifier signal for property encodingMode.
+
+[signal]void QMediaRecorder::errorOccurred(QMediaRecorder::Error error, const QString &errorString)
+Signals that an error has occurred, with errorString containing a description of the error.
+
+bool QMediaRecorder::isAvailable() const
+Returns true if media recorder service ready to use.
+
+[signal]void QMediaRecorder::metaDataChanged()
+Signals that a media object's meta-data has changed.
+
+If multiple meta-data elements are changed metaDataChanged() is emitted once.
+
+Note: Notifier signal for property metaData.
+
+QIODevice *QMediaRecorder::outputDevice() const
+Returns the output IO device for media content.
+
+See also setOutputDevice().
+
+[slot]void QMediaRecorder::pause()
+Pauses recording.
+
+The recorder state is changed to QMediaRecorder::PausedState.
+
+Depending on the platform, pausing recording may be not supported. In this case the recorder state is unchanged.
+
+[signal]void QMediaRecorder::qualityChanged()
+Signals when the recording quality changes.
+
+Note: Notifier signal for property quality.
+
+[slot]void QMediaRecorder::record()
+Starts recording.
+
+While the recorder state is changed immediately to c{QMediaRecorder::RecordingState}, recording may start asynchronously.
+
+If recording fails error() signal is emitted with recorder state being reset back to QMediaRecorder::StoppedState.
+
+This method updates actualLocation according to its generation rules.
+
+Note: On mobile devices, recording will happen in the orientation the device had when calling record and is locked for the duration of the recording. To avoid artifacts on the user interface, we recommend to keep the user interface locked to the same orientation as long as the recording is ongoing using the contentOrientation property of QWindow and unlock it again once the recording is finished.
+
+QMediaRecorder::RecorderState QMediaRecorder::recorderState() const
+Returns the current media recorder state.
+
+Note: Getter function for property recorderState.
+
+See also QMediaRecorder::RecorderState.
+
+[signal]void QMediaRecorder::recorderStateChanged(QMediaRecorder::RecorderState state)
+Signals that a media recorder's state has changed.
+
+Note: Notifier signal for property recorderState.
+
+void QMediaRecorder::setAudioBitRate(int bitRate)
+Sets the audio bitRate in bits per second.
+
+Note: Setter function for property audioBitRate.
+
+See also audioBitRate().
+
+void QMediaRecorder::setAudioChannelCount(int channels)
+Sets the number of audio channels.
+
+A value of -1 indicates the recorder should make an optimal choice based on what is available from the audio source and the limitations of the codec.
+
+Note: Setter function for property audioChannelCount.
+
+See also audioChannelCount().
+
+void QMediaRecorder::setAudioSampleRate(int sampleRate)
+Sets the audio sampleRate in Hz.
+
+A value of -1 indicates the recorder should make an optimal choice based on what is available from the audio source, and the limitations of the codec.
+
+Note: Setter function for property audioSampleRate.
+
+See also audioSampleRate().
+
+void QMediaRecorder::setEncodingMode(QMediaRecorder::EncodingMode mode)
+Sets the encoding mode setting.
+
+If ConstantQualityEncoding is set, the quality encoding parameter is used and bit rates are ignored, otherwise the bitrates are used.
+
+Note: Setter function for property encodingMode.
+
+See also encodingMode() and EncodingMode.
+
+void QMediaRecorder::setMetaData(const QMediaMetaData &metaData)
+Sets the meta data to metaData.
+
+Note: To ensure that meta-data is set correctly, it should be set before starting the recording. Once the recording is started, any meta-data set will be attached to the next recording.
+
+Note: Setter function for property metaData.
+
+See also metaData().
+
+void QMediaRecorder::setOutputDevice(QIODevice *device)
+Set the output IO device for media content.
+
+The device must have been opened in the WriteOnly or ReadWrite modes before the recording starts.
+
+The media recorder doesn't take ownership of the specified device. If the recording has been started, the device must be kept alive and open until the signal recorderStateChanged(StoppedState) is emitted.
+
+This method resets actualLocation immediately unless the specified device is null.
+
+If a writable output device is assigned to the recorder, outputLocation is ignored, and actualLocation is not generated when recording starts. This behavior may change in the future, so we recommend setting only one output, either outputLocation or outputDevice.
+
+QMediaRecorder::setOutputDevice is only supported with the FFmpeg backend.
+
+See also outputDevice() and outputLocation.
+
+void QMediaRecorder::setVideoBitRate(int bitRate)
+Sets the video bitRate in bits per second.
+
+Note: Setter function for property videoBitRate.
+
+See also videoBitRate().
+
+void QMediaRecorder::setVideoFrameRate(qreal frameRate)
+Sets the video frameRate.
+
+A value of 0 indicates the recorder should make an optimal choice based on what is available from the video source and the limitations of the codec.
+
+Note: Setter function for property videoFrameRate.
+
+See also videoFrameRate().
+
+void QMediaRecorder::setVideoResolution(const QSize &size)
+Sets the resolution of the encoded video to size.
+
+Pass an empty QSize to make the recorder choose an optimal resolution based on what is available from the video source and the limitations of the codec.
+
+Note: Setter function for property videoResolution.
+
+See also videoResolution().
+
+void QMediaRecorder::setVideoResolution(int width, int height)
+Sets the width and height of the resolution of the encoded video.
+
+This is an overloaded function.
+
+Note: Setter function for property videoResolution.
+
+[slot]void QMediaRecorder::stop()
+The recorder will stop the recording. Processing pending video and audio data might however still take some time. The recording is finished, once the state of the media recorder changes to QMediaRecorder::StoppedState.
+
+int QMediaRecorder::videoBitRate() const
+Returns the bit rate of the compressed video stream in bits per second.
+
+Note: Getter function for property videoBitRate.
+
+See also setVideoBitRate().
+
+[signal]void QMediaRecorder::videoBitRateChanged()
+Signals when the recording video bit rate changes.
+
+Note: Notifier signal for property videoBitRate.
+
+qreal QMediaRecorder::videoFrameRate() const
+Returns the video frame rate.
+
+Note: Getter function for property videoFrameRate.
+
+See also setVideoFrameRate().
+
+[signal]void QMediaRecorder::videoFrameRateChanged()
+Signals when the recording video frame rate changes.
+
+Note: Notifier signal for property videoFrameRate.
+
+QSize QMediaRecorder::videoResolution() const
+Returns the resolution of the encoded video.
+
+Note: Getter function for property videoResolution.
+
+See also setVideoResolution().
+
+[signal]void QMediaRecorder::videoResolutionChanged()
+Signals when the video recording resolution changes.
+
+Note: Notifier signal for property videoResolution.
+
+© 2024 The Qt Company Ltd. Documentation contributions included herein are the copyrights of their respective owners. The documentation provided herein is licensed under the terms of the GNU Free Documentation License version 1.3 as published by the Free Software Foundation. Qt and respective logos are trademarks of The Qt Company Ltd. in Finland and/or other countries worldwide. All other trademarks are property of their respective owners.
+Contents
+Public Types
+
+Properties
+
+Public Functions
+
+Public Slots
+
+Signals
+
+Detailed Description
+
+
+
+Contact Us
+Qt Group
+Our Story
+Brand
+News
+Careers
+Investors
+Qt Products
+Quality Assurance Products
+Licensing
+License Agreement
+Open Source
+Plans and pricing
+Download
+FAQ
+Learn Qt
+For Learners
+For Students and Teachers
+Qt Documentation
+Qt Forum
+Support & Services
+Professional Services
+Customer Success
+Support Services
+Partners
+Qt World
+© 2024 The Qt Company
+Feedback
+Qt Group includes The Qt Company Oy and its global subsidiaries and affiliates.
+
+解释

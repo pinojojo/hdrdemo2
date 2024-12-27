@@ -60,6 +60,7 @@ signals:
     void connectClicked(bool connect);
     void streamClicked(bool stream);
     void captureClicked();
+    void recordingClicked(bool record);
     void exposureChanged(int value);
     void gainChanged(int value);
 
@@ -92,9 +93,9 @@ private:
     void onRecordClicked();
 
     // 状态
-    bool m_isConnected;
-    bool m_isStreaming;
-    bool m_isRecording;
+    bool m_isConnected = false;
+    bool m_isStreaming = false;
+    bool m_isRecording = false;
 };
 
 #endif // CAMERACONTROLLERBAR_H

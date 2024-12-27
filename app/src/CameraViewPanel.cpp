@@ -90,7 +90,28 @@ void CameraViewPanel::onCaptureClicked()
 {
     if (!m_camera)
         return;
-    m_camera->snap();
+
+    QString fileName = m_camera->label().c_str();
+
+    QDateTime current_date_time = QDateTime::currentDateTime();
+    QString current_date = current_date_time.toString("yyyy-MM-dd_hh-mm-ss");
+    fileName += "-" + current_date + ".png";
+
+    m_frameRenderer->onCaptureFrame(fileName);
+}
+
+void CameraViewPanel::onRecordClicked(bool record)
+{
+    if (record)
+    {
+        QString filename = m_camera->label().c_str();
+        filename += "-" + QDateTime::currentDateTime().toString("yyyy-MM-dd_hh-mm-ss") + ".avi";
+        m_frameRenderer->startRecording(filename);
+    }
+    else
+    {
+        m_frameRenderer->stopRecording();
+    }
 }
 
 void CameraViewPanel::onExposureChanged(int value)
@@ -128,6 +149,8 @@ void CameraViewPanel::createConnections()
             this, &CameraViewPanel::onStreamClicked);
     connect(m_controlBar, &CameraControllerBar::captureClicked,
             this, &CameraViewPanel::onCaptureClicked);
+    connect(m_controlBar, &CameraControllerBar::recordingClicked,
+            this, &CameraViewPanel::onRecordClicked);
     connect(m_controlBar, &CameraControllerBar::exposureChanged,
             this, &CameraViewPanel::onExposureChanged);
     connect(m_controlBar, &CameraControllerBar::gainChanged,

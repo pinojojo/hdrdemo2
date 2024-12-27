@@ -24,6 +24,7 @@ private slots:
     void onConnectClicked(bool connect);
     void onStreamClicked(bool stream);
     void onCaptureClicked();
+    void onRecordClicked(bool record);
     void onExposureChanged(int value);
     void onGainChanged(int value);
 

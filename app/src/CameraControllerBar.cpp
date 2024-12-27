@@ -85,7 +85,7 @@ QPushButton *CameraControllerBar::createButton(const QString &iconPath, const QS
     button->setToolTip(tooltip);
     button->setFixedSize(20, 20);
     button->setIconSize(QSize(15, 15));
-    button->setFocusPolicy(Qt::NoFocus);
+    button->setFocusPolicy(Qt::ClickFocus);
     return button;
 }
 
@@ -95,12 +95,14 @@ void CameraControllerBar::onRecordClicked()
 
     if (m_isRecording)
     {
-        m_recordingButton->setIcon(QIcon(":/icons8_video_record.svg"));
+        m_recordingButton->setIcon(QIcon(":/icons8_record.svg"));
     }
     else
     {
-        m_recordingButton->setIcon(QIcon(":/icons8_record.svg"));
+        m_recordingButton->setIcon(QIcon(":/icons8_video_record.svg"));
     }
+
+    emit recordingClicked(m_isRecording);
 }
 
 void CameraControllerBar::createConnections()

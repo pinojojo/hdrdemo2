@@ -14,6 +14,11 @@
 #include "Frame.h"
 #include "Common.h"
 
+#include <QMediaRecorder>
+#include <QVideoSink>
+#include <QVideoFrame>
+#include <QVideoFrameInput>
+
 #include "logwidget.hpp"
 
 class FrameRenderer : public QOpenGLWidget, protected QOpenGLFunctions_3_3_Core
@@ -53,12 +58,35 @@ public slots:
     void enterDrawMode(bool enter);
     void clearMask();
     void onEnableUpdate(bool enable); // 当使用自动调光模式时，就不能在此处更新了，要把消费权交给MaskWindow
+    void onCaptureFrame(QString fileName)
+    {
+        m_requestCapture = true;
+        m_captureFileName = fileName;
+    }
+
+    void startRecording(QString filename);
+    void stopRecording();
 
 private:
     FrameRenderer(const FrameRenderer &) = delete;
     FrameRenderer &operator=(const FrameRenderer &) = delete;
 
     bool m_isFirstUpdate = true;
+
+    // 拍照
+    bool m_requestCapture = false;
+    QString m_captureFileName;
+
+    // 录像
+    std::unique_ptr<QMediaCaptureSession> m_captureSession;
+    std::unique_ptr<QVideoFrameInput> m_frameInput;
+    std::unique_ptr<QMediaRecorder> m_recorder;
+    std::unique_ptr<QVideoSink> m_videoSink;
+    bool m_isRecording = false;
+    QString m_recordingFile;
+    qint64 m_recordingStartTime = 0;
+    qint64 m_lastFrameTime = 0;
+    const qint64 FRAME_INTERVAL = 20; // 50fps = 20ms per framebool
 
     struct Impl;
     Impl *impl;

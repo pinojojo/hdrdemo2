@@ -11,6 +11,8 @@
 #include <QAction>
 #include <QTimer>
 #include <QInputDialog>
+#include <QMediaFormat>
+#include <QMediaCaptureSession>
 
 #include "logwidget.hpp"
 #include "polygonrenderer.hpp"
@@ -525,16 +527,14 @@ void FrameRenderer::paintGL()
 
     // 更新输入cameraTexture
     bool updateSuccess = false;
-    if (associateCamera)
+
+    if (associateCamera && associateCamera->streaming())
     {
-        if (associateCamera->streaming())
+        int width, height, channels, bitDepth;
+        if (associateCamera->getFrame(frameData.data(), width, height, channels, bitDepth))
         {
-            int width, height, channels, bitDepth;
-            if (associateCamera->getFrame(frameData.data(), width, height, channels, bitDepth))
-            {
-                onFrameChangedDirectMode(frameData.data(), width, height, channels, bitDepth);
-                updateSuccess = true;
-            }
+            onFrameChangedDirectMode(frameData.data(), width, height, channels, bitDepth);
+            updateSuccess = true;
         }
     }
 
@@ -549,8 +549,9 @@ void FrameRenderer::paintGL()
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, impl->intermediateFBO);
-        onAutoFit();
+
         glViewport(0, 0, impl->intermediateFBOSize.width(), impl->intermediateFBOSize.height());
+
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -564,13 +565,87 @@ void FrameRenderer::paintGL()
 
         int canvasSizeWidth = impl->intermediateFBOSize.width();
         int canvasSizeHeight = impl->intermediateFBOSize.height();
+
         impl->shaderProgram->setUniformValue("canvasSize", canvasSizeWidth, canvasSizeHeight);
+        impl->shaderProgram->setUniformValue("canvasBoundary",
+                                             0.f,  // left
+                                             1.f,  // right
+                                             0.f,  // bottom
+                                             1.f); // top
 
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         impl->vao.release();
         impl->shaderProgram->release();
         impl->cameraTexture->release();
+
+        // 拍照
+        if (m_requestCapture)
+        {
+            m_requestCapture = false;
+
+            std::vector<unsigned char> data(impl->intermediateFBOSize.width() * impl->intermediateFBOSize.height() * 3);
+            glReadPixels(0, 0, impl->intermediateFBOSize.width(), impl->intermediateFBOSize.height(), GL_RGB, GL_UNSIGNED_BYTE, data.data());
+            QImage img(data.data(), impl->intermediateFBOSize.width(), impl->intermediateFBOSize.height(), QImage::Format_RGB888);
+            img.save(m_captureFileName);
+
+            Log::info(QString("Capture saved to %1").arg(m_captureFileName));
+        }
+
+        // 录像
+        if (m_isRecording)
+        {
+            // 检查是否应该发送新帧
+            qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+            if (currentTime - m_lastFrameTime >= FRAME_INTERVAL)
+            {
+                // 分配内存并读取像素
+                std::vector<unsigned char> data(impl->intermediateFBOSize.width() *
+                                                impl->intermediateFBOSize.height() * 4);
+
+                glReadPixels(0, 0, impl->intermediateFBOSize.width(),
+                             impl->intermediateFBOSize.height(),
+                             GL_BGRA, GL_UNSIGNED_BYTE, data.data());
+
+                // 垂直翻转图像
+                std::vector<unsigned char> flipped_data(data.size());
+                int stride = impl->intermediateFBOSize.width() * 4;
+                for (int y = 0; y < impl->intermediateFBOSize.height(); ++y)
+                {
+                    memcpy(flipped_data.data() + y * stride,
+                           data.data() + (impl->intermediateFBOSize.height() - 1 - y) * stride,
+                           stride);
+                }
+
+                // 创建视频帧
+                QVideoFrame videoFrame(
+                    QVideoFrameFormat(
+                        QSize(impl->intermediateFBOSize.width(), impl->intermediateFBOSize.height()),
+                        QVideoFrameFormat::Format_BGRA8888));
+
+                if (videoFrame.map(QVideoFrame::WriteOnly))
+                {
+                    // 复制图像数据
+                    memcpy(videoFrame.bits(0), flipped_data.data(), flipped_data.size());
+
+                    // 设置准确的时间戳
+                    qint64 presentationTime = currentTime - m_recordingStartTime;
+                    videoFrame.setStartTime(presentationTime * 1000); // 转换为微秒
+                    videoFrame.setEndTime((presentationTime + FRAME_INTERVAL) * 1000);
+
+                    videoFrame.unmap();
+
+                    // 发送帧
+                    if (!m_frameInput->sendVideoFrame(videoFrame))
+                    {
+                        Log::warn(QString("Failed to send video frame at time %1ms")
+                                      .arg(presentationTime));
+                    }
+                }
+
+                m_lastFrameTime = currentTime;
+            }
+        }
     }
 
     // 切换回默认FBO
@@ -580,7 +655,7 @@ void FrameRenderer::paintGL()
                0,
                this->width() * this->devicePixelRatio(),
                this->height() * this->devicePixelRatio());
-    glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     // 绘制相机画面部分
@@ -814,6 +889,71 @@ void FrameRenderer::onEnableUpdate(bool enable)
     {
         enableUpdate = false;
     }
+}
+
+void FrameRenderer::startRecording(QString filename)
+{
+    if (m_isRecording)
+        return;
+
+    m_recordingFile = filename;
+
+    m_recordingStartTime = QDateTime::currentMSecsSinceEpoch();
+    m_lastFrameTime = m_recordingStartTime;
+
+    Log::info(QString("Start recording to: %1").arg(m_recordingFile));
+
+    // 创建媒体捕获会话
+    m_captureSession = std::make_unique<QMediaCaptureSession>();
+
+    // 创建视频帧输入
+    m_frameInput = std::make_unique<QVideoFrameInput>();
+    m_captureSession->setVideoFrameInput(m_frameInput.get());
+
+    // 创建媒体记录器并设置捕获会话
+    m_recorder = std::make_unique<QMediaRecorder>();
+    m_captureSession->setRecorder(m_recorder.get());
+
+    // 设置输出位置
+    m_recorder->setOutputLocation(QUrl::fromLocalFile(filename));
+
+    // 配置媒体格式
+    QMediaFormat format;
+    format.setFileFormat(QMediaFormat::FileFormat::AVI);
+    format.setVideoCodec(QMediaFormat::VideoCodec::H264);
+    m_recorder->setMediaFormat(format);
+
+    m_recorder->setVideoResolution(QSize(impl->cameraTexture->width(), impl->cameraTexture->height()));
+    m_recorder->setVideoFrameRate(50);
+    m_recorder->setQuality(QMediaRecorder::VeryHighQuality);
+
+    // 连接错误处理
+    connect(m_recorder.get(), &QMediaRecorder::errorOccurred,
+            this, [this](QMediaRecorder::Error error, const QString &errorString)
+            { Log::error(QString("Recording error: %1").arg(errorString)); });
+
+    // 开始录制
+    m_recorder->record();
+    m_isRecording = true;
+}
+
+void FrameRenderer::stopRecording()
+{
+    if (!m_isRecording)
+        return;
+
+    if (m_recorder)
+    {
+        m_recorder->stop();
+    }
+
+    m_recorder.reset();
+    m_videoSink.reset();
+    m_captureSession.reset();
+    m_frameInput.reset();
+    m_isRecording = false;
+
+    Log::info(QString("Video saved to: %1").arg(m_recordingFile));
 }
 
 void FrameRenderer::onFrameChanged(const QImage &frame)

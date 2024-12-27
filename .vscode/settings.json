@@ -100,6 +100,19 @@
         "source_location": "cpp",
         "stdfloat": "cpp",
         "unordered_set": "cpp",
-        "qhboxlayout": "cpp"
-    }
+        "qhboxlayout": "cpp",
+        "qmediarecorder": "cpp",
+        "qmediacapturesession": "cpp",
+        "qvideoframeinput": "cpp"
+    },
+    "terminal.integrated.defaultProfile.windows": "Command Prompt",
+    "terminal.integrated.env.windows": {
+        "PYTHONIOENCODING": "UTF-8"
+    },
+    "files.encoding": "utf8",
+    "terminal.integrated.encoding": "utf8",
+    "output.enableAnsiColors": true,
+    "output.encoding": "utf8",
+    "cmake.outputLogEncoding": "GBK",
+    "files.autoGuessEncoding": true
 }

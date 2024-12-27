@@ -21,6 +21,8 @@ find_package(Qt6
     OpenGL
     OpenGLWidgets
     PrintSupport
+    Multimedia
+    MultimediaWidgets
 )
 
 # 寻找 海康MVS
@@ -53,6 +55,8 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::OpenGL
     Qt6::OpenGLWidgets
     Qt6::PrintSupport
+    Qt6::Multimedia
+    Qt6::MultimediaWidgets
     ${MVS_LIB_FILE}
 )
 
