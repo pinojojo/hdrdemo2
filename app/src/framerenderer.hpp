@@ -27,20 +27,16 @@ public:
     };
 
     explicit FrameRenderer(QWidget *parent = nullptr);
-
     virtual ~FrameRenderer();
 
     void setFrameBuffer(lzx::TripleBuffer<lzx::Frame> *tripleBuffer);
-
     void setAssociateCamera(lzx::ICamera *camera) { associateCamera = camera; }
-
     std::vector<MaskPolygon> getMaskPolygons() const;
 
 protected:
     void initializeGL() override;
     void paintGL() override;
     void resizeGL(int width, int height) override;
-
     void wheelEvent(QWheelEvent *event) override;
     void mouseDoubleClickEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;

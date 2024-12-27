@@ -37,7 +37,7 @@ static const char *basicFragmentShader =
     "void main()\n"
     "{\n"
     "   vec2 canvasCoord = vec2(gl_FragCoord.x/canvasSize.x, gl_FragCoord.y/canvasSize.y);\n"
-    "   vec2 textureCoord = vec2( canvasCoord.x*(canvasBoundary.y-canvasBoundary.x) + canvasBoundary.x, canvasCoord.y*(canvasBoundary.w-canvasBoundary.z) + canvasBoundary.z);\n"
+    "   vec2 textureCoord = vec2(canvasCoord.x*(canvasBoundary.y-canvasBoundary.x) + canvasBoundary.x, canvasCoord.y*(canvasBoundary.w-canvasBoundary.z) + canvasBoundary.z);\n"
     "   vec4 texColor = texture(tex,textureCoord);\n"
     "   outColor = vec4(texColor.r, texColor.r,texColor.r, 1.0);\n"
     "   //outColor = vec4(canvasCoord,0.0, 1.0);\n"
@@ -264,20 +264,20 @@ struct FrameRenderer::Impl
     QOpenGLBuffer ebo;
 
     // 中间层 FBO 相关
-    GLuint fbo = 0;
+    GLuint intermediateFBO = 0;
     GLuint intermediateTexture = 0;
-    QSize fboSize;
+    QSize intermediateFBOSize;
 
     // 重新创建或调整FBO大小的方法
     void resizeFramebuffer(int width, int height)
     {
-        if (fboSize.width() == width && fboSize.height() == height)
+        if (intermediateFBOSize.width() == width && intermediateFBOSize.height() == height)
         {
             return; // 尺寸没变，无需重建
         }
 
         // 记录新尺寸
-        fboSize = QSize(width, height);
+        intermediateFBOSize = QSize(width, height);
 
         // 删除旧的纹理
         if (intermediateTexture)
@@ -292,10 +292,16 @@ struct FrameRenderer::Impl
         owner.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
         owner.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         owner.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        owner.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        owner.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+        float borderColor[] = {0.0f, 0.0f, 0.0f, 1.0f};
+        owner.glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
         owner.glBindTexture(GL_TEXTURE_2D, 0);
 
         // 重新绑定FBO
-        owner.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        owner.glBindFramebuffer(GL_FRAMEBUFFER, intermediateFBO);
         owner.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, intermediateTexture, 0);
 
         // 检查FBO状态
@@ -418,7 +424,7 @@ struct FrameRenderer::Impl
 
         // 创建和设置中间层 FBO
         {
-            owner.glGenFramebuffers(1, &fbo);
+            owner.glGenFramebuffers(1, &intermediateFBO);
             owner.glGenTextures(1, &intermediateTexture);
 
             // 设置中间纹理，使用RGB8格式
@@ -429,7 +435,7 @@ struct FrameRenderer::Impl
             owner.glBindTexture(GL_TEXTURE_2D, 0);
 
             // 绑定FBO和纹理
-            owner.glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            owner.glBindFramebuffer(GL_FRAMEBUFFER, intermediateFBO);
             owner.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, intermediateTexture, 0);
 
             // 检查FBO状态
@@ -511,11 +517,14 @@ void FrameRenderer::initializeGL()
 
 void FrameRenderer::paintGL()
 {
-    glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    // 首先检查必要的资源是否存在
+    if (!impl->shaderProgram || !impl->cameraTexture || !impl->vao.isCreated())
+    {
+        return;
+    }
 
-    // 更新图像数据
-    bool updateSuccess = true;
+    // 更新输入cameraTexture
+    bool updateSuccess = false;
     if (associateCamera)
     {
         if (associateCamera->streaming())
@@ -529,11 +538,50 @@ void FrameRenderer::paintGL()
         }
     }
 
-    if (m_isFirstUpdate)
+    // 绘制到中间层FBO
+    if (updateSuccess)
     {
-        m_isFirstUpdate = false;
+        // 确保FBO存在且完整
+        if (impl->intermediateFBO == 0 || impl->intermediateTexture == 0)
+        {
+            Log::error("FBO or intermediate texture not initialized");
+            return;
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, impl->intermediateFBO);
         onAutoFit();
+        glViewport(0, 0, impl->intermediateFBOSize.width(), impl->intermediateFBOSize.height());
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        QOpenGLVertexArrayObject::Binder vaoBinder(&impl->vao);
+        impl->shaderProgram->bind();
+
+        // 激活并绑定纹理
+        glActiveTexture(GL_TEXTURE0);
+        impl->cameraTexture->bind();
+        impl->shaderProgram->setUniformValue("tex", 0);
+
+        int canvasSizeWidth = impl->intermediateFBOSize.width();
+        int canvasSizeHeight = impl->intermediateFBOSize.height();
+        impl->shaderProgram->setUniformValue("canvasSize", canvasSizeWidth, canvasSizeHeight);
+
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        impl->vao.release();
+        impl->shaderProgram->release();
+        impl->cameraTexture->release();
     }
+
+    // 切换回默认FBO
+    glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject());
+    onAutoFit();
+    glViewport(0,
+               0,
+               this->width() * this->devicePixelRatio(),
+               this->height() * this->devicePixelRatio());
+    glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     // 绘制相机画面部分
     if (updateSuccess)
@@ -543,7 +591,7 @@ void FrameRenderer::paintGL()
 
         // 激活并绑定纹理
         glActiveTexture(GL_TEXTURE0);
-        impl->cameraTexture->bind();
+        glBindTexture(GL_TEXTURE_2D, impl->intermediateTexture); // 使用中间层FBO的纹理
         impl->shaderProgram->setUniformValue("tex", 0);
 
         int canvasSizeWidth = this->width() * this->devicePixelRatio();
@@ -568,6 +616,13 @@ void FrameRenderer::paintGL()
                                         polygon.isClosed ? PolygonRenderer::Mode::Filler : PolygonRenderer::Mode::Open,
                                         polygon.infillIntensity);
         }
+    }
+
+    // 检查错误
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR)
+    {
+        Log::error(QString("OpenGL Error occured in FrameRenderer paintGL: %1").arg(error));
     }
 
     update();
@@ -628,7 +683,7 @@ void FrameRenderer::onFrameChangedDirectMode(const unsigned char *data, int widt
     if (!impl->cameraTexture || QSize(impl->cameraTexture->width(), impl->cameraTexture->height()) != QSize(width, height) || m_isFirstUpdate)
     {
         QString log = "recreating camera texture: width " + QString::number(width) + " height " + QString::number(height) + " channels " + QString::number(channels) + " bitDepth " + QString::number(bitDepth);
-        Log::info(log.toStdString().c_str());
+        Log::warn(log.toStdString().c_str());
 
         // 删除旧的纹理
         delete impl->cameraTexture;
@@ -662,6 +717,16 @@ void FrameRenderer::onFrameChangedDirectMode(const unsigned char *data, int widt
         impl->cameraTexture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
         impl->cameraTexture->setMagnificationFilter(QOpenGLTexture::Linear);
 
+        // 检查OpenGL错误
+        GLenum error = glGetError();
+        if (error != GL_NO_ERROR)
+        {
+            Log::error(QString("OpenGL Error occured in recreate camera texture: %1").arg(error));
+        }
+
+        // 调整中间层FBO的大小
+        impl->resizeFramebuffer(width, height);
+
         needAutoFit = true;
 
         if (m_isFirstUpdate)
@@ -681,7 +746,7 @@ void FrameRenderer::onFrameChangedFromCamera(lzx::ICamera *camera)
 
 void FrameRenderer::onAutoFit()
 {
-    // 更新impl
+    // 根据纹理尺寸调整shader参数
     QSize textureSize = QSize(impl->cameraTexture->width(), impl->cameraTexture->height());
 
     // 考虑DPI问题
@@ -700,9 +765,6 @@ void FrameRenderer::onAutoFit()
                                          impl->frame.min_y,  // bottom
                                          impl->frame.max_y); // top
     impl->shaderProgram->release();
-
-    // 更新窗口
-    update();
 }
 
 void FrameRenderer::onModeChanged(FrameRenderer::Mode mode)
@@ -1060,9 +1122,58 @@ void FrameRenderer::resizeGL(int width, int height)
 // 更新纹理内容
 void FrameRenderer::updateOpenGLTexture(GLuint textureID, int width, int height, const GLubyte *data, int channels, int bitDepth)
 {
+    if (!data || width <= 0 || height <= 0)
+    {
+        Log::error("Invalid texture update parameters");
+        return;
+    }
+
     GLenum availFormats[] = {GL_RED, GL_RG, GL_RGB, GL_RGBA};
     GLenum format = availFormats[channels - 1];
     GLenum type = (bitDepth <= 8) ? GL_UNSIGNED_BYTE : GL_UNSIGNED_SHORT;
+
+    // 选择合适的内部格式
+    GLint internalFormat;
+    if (bitDepth <= 8)
+    {
+        switch (channels)
+        {
+        case 1:
+            internalFormat = GL_R8;
+            break;
+        case 2:
+            internalFormat = GL_RG8;
+            break;
+        case 3:
+            internalFormat = GL_RGB8;
+            break;
+        case 4:
+            internalFormat = GL_RGBA8;
+            break;
+        default:
+            internalFormat = GL_RGB8;
+        }
+    }
+    else
+    {
+        switch (channels)
+        {
+        case 1:
+            internalFormat = GL_R16;
+            break;
+        case 2:
+            internalFormat = GL_RG16;
+            break;
+        case 3:
+            internalFormat = GL_RGB16;
+            break;
+        case 4:
+            internalFormat = GL_RGBA16;
+            break;
+        default:
+            internalFormat = GL_RGB16;
+        }
+    }
 
     // 计算对齐要求
     int bytesPerPixel = channels * (bitDepth <= 8 ? 1 : 2);
@@ -1075,13 +1186,20 @@ void FrameRenderer::updateOpenGLTexture(GLuint textureID, int width, int height,
         alignment = 2;
 
     glBindTexture(GL_TEXTURE_2D, textureID);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
+
+    // 然后更新纹理数据
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, type, data);
+
     glBindTexture(GL_TEXTURE_2D, 0);
 
     GLenum error = glGetError();
     if (error != GL_NO_ERROR)
     {
-        Log::error(QString("OpenGL Error in updateOpenGLTexture: %1").arg(error));
+        Log::error(QString("OpenGL Error in updateOpenGLTexture: %1, width: %2, height: %3, channels: %4, bitDepth: %5")
+                       .arg(error)
+                       .arg(width)
+                       .arg(height)
+                       .arg(channels)
+                       .arg(bitDepth));
     }
 }
