@@ -105,7 +105,8 @@
         "qmediacapturesession": "cpp",
         "qvideoframeinput": "cpp",
         "qwebengineview": "cpp",
-        "qtwebenginewidgets": "cpp"
+        "qtwebenginewidgets": "cpp",
+        "qregularexpression": "cpp"
     },
     "terminal.integrated.defaultProfile.windows": "Command Prompt",
     "terminal.integrated.env.windows": {

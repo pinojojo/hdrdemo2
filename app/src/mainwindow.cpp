@@ -39,9 +39,6 @@ MainWindow::MainWindow(QWidget *parent)
     menu->addAction(glslEditorAction);
     connect(glslEditorAction, &QAction::triggered, this, &MainWindow::openGLSLEditor);
 
-    // 初始化编辑器窗口
-    monacoEditor = new MonacoEditorWindow(this);
-
     menu->addAction(settingsAction);
     connect(settingsAction, &QAction::triggered, this, &MainWindow::openSettings);
 
@@ -119,21 +116,21 @@ void MainWindow::toggleMaskWindow()
 
 void MainWindow::openSettings()
 {
+
     SettingsDialog dialog(this);
     dialog.exec();
 }
 
 void MainWindow::openGLSLEditor()
 {
-    if (!monacoEditor->isVisible())
+    if (!glslEditor)
     {
-        monacoEditor->show();
+        glslEditor = new GLSLEditor(nullptr); // 使用nullptr作为父对象使其成为独立窗口
+        glslEditor->setAttribute(Qt::WA_DeleteOnClose);
     }
-    else
-    {
-        monacoEditor->raise();
-        monacoEditor->activateWindow();
-    }
+    glslEditor->show();
+    glslEditor->raise();
+    glslEditor->activateWindow();
 }
 
 void MainWindow::toggleDeviceFinder()

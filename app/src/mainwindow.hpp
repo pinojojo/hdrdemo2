@@ -16,7 +16,8 @@
 
 #include "logwidget.hpp"
 
-#include "MonacoEditorWindow.hpp"
+#include "GLSLEditor.hpp"
+
 #include "MultiWindowManager.h"
 
 class MainWindow : public QMainWindow
@@ -50,8 +51,7 @@ private:
     UserControlArea *userControlArea;
     QAction *settingsAction;
     QAction *glslEditorAction;
-
-    MonacoEditorWindow *monacoEditor;
+    GLSLEditor *glslEditor = nullptr;
 };
 
 #endif // MAINWINDOW_HPP

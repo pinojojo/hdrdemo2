@@ -3,8 +3,6 @@
 #include <QScreen>
 #include <QMessageBox>
 #include <QThread>
-#include <QWebEngineView>
-#include <QtWebEngineWidgets/QtWebEngineWidgets> // 添加这行
 
 #include <oclero/qlementine/style/QlementineStyle.hpp>
 #include <oclero/qlementine/utils/WidgetUtils.hpp>
@@ -22,9 +20,7 @@
 int main(int argc, char *argv[])
 {
 
-    QApplication qApplication(argc, argv);
-
-    //  QtWebEngineCore::initialize(); // 修改这行
+     QApplication qApplication(argc, argv);
 
 #ifdef USE_QLEMENTINE_STYLE
     auto *const style = new oclero::qlementine::QlementineStyle(&qApplication);
