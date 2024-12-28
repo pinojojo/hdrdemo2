@@ -3,6 +3,9 @@
 #include <QScreen>
 #include <QMessageBox>
 #include <QThread>
+#include <QWebEngineView>
+#include <QtWebEngineWidgets/QtWebEngineWidgets> // 添加这行
+
 #include <oclero/qlementine/style/QlementineStyle.hpp>
 #include <oclero/qlementine/utils/WidgetUtils.hpp>
 
@@ -19,9 +22,9 @@
 int main(int argc, char *argv[])
 {
 
-    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps, true);
     QApplication qApplication(argc, argv);
+
+    //  QtWebEngineCore::initialize(); // 修改这行
 
 #ifdef USE_QLEMENTINE_STYLE
     auto *const style = new oclero::qlementine::QlementineStyle(&qApplication);

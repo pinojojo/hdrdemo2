@@ -23,6 +23,7 @@ find_package(Qt6
     PrintSupport
     Multimedia
     MultimediaWidgets
+    WebEngineWidgets      
 )
 
 # 寻找 海康MVS
@@ -57,6 +58,7 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::PrintSupport
     Qt6::Multimedia
     Qt6::MultimediaWidgets
+    Qt6::WebEngineWidgets     
     ${MVS_LIB_FILE}
 )
 

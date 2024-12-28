@@ -75,7 +75,7 @@ LogWidget::LogWidget(QWidget *parent)
     buttonLayout->setContentsMargins(2, 2, 2, 0);
     buttonLayout->addWidget(autoScrollButton);
 
-    view = new QListView(this);
+    view = new LogListView(this);
     view->setModel(model);
 
     QFont font("Consolas", 9);
@@ -95,6 +95,9 @@ LogWidget::LogWidget(QWidget *parent)
     qDebug() << log;
 
     Log::info(log);
+
+    // 连接滚轮滚动信号到槽
+    connect(view, &LogListView::wheelScrolled, this, &LogWidget::onWheelScrolled);
 
     // 连接按钮信号到槽
     connect(autoScrollButton, &QPushButton::toggled, this, [this](bool checked)

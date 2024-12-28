@@ -2,6 +2,7 @@
 #include <QVBoxLayout>
 
 #include "DummyTestCamera.h"
+#include "Settings.hpp"
 
 #include "logwidget.hpp"
 
@@ -91,13 +92,15 @@ void CameraViewPanel::onCaptureClicked()
     if (!m_camera)
         return;
 
-    QString fileName = m_camera->label().c_str();
+    QString filename = m_camera->label().c_str();
 
     QDateTime current_date_time = QDateTime::currentDateTime();
     QString current_date = current_date_time.toString("yyyy-MM-dd_hh-mm-ss");
-    fileName += "-" + current_date + ".png";
+    filename += "-" + current_date + ".png";
 
-    m_frameRenderer->onCaptureFrame(fileName);
+    filename = Settings::getInstance().getDefaultSavePath() + "/" + filename;
+
+    m_frameRenderer->onCaptureFrame(filename);
 }
 
 void CameraViewPanel::onRecordClicked(bool record)
@@ -106,6 +109,9 @@ void CameraViewPanel::onRecordClicked(bool record)
     {
         QString filename = m_camera->label().c_str();
         filename += "-" + QDateTime::currentDateTime().toString("yyyy-MM-dd_hh-mm-ss") + ".avi";
+
+        filename = Settings::getInstance().getDefaultSavePath() + "/" + filename;
+
         m_frameRenderer->startRecording(filename);
     }
     else

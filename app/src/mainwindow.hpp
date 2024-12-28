@@ -16,6 +16,7 @@
 
 #include "logwidget.hpp"
 
+#include "MonacoEditorWindow.hpp"
 #include "MultiWindowManager.h"
 
 class MainWindow : public QMainWindow
@@ -31,6 +32,8 @@ public:
 private slots:
     void toggleDeviceFinder();
     void toggleMaskWindow();
+    void openSettings();
+    void openGLSLEditor();
 
 private:
     QSplitter *splitter;
@@ -45,6 +48,10 @@ private:
     QAction *logWidgetAction;
     QAction *maskWindowToggleAction;
     UserControlArea *userControlArea;
+    QAction *settingsAction;
+    QAction *glslEditorAction;
+
+    MonacoEditorWindow *monacoEditor;
 };
 
 #endif // MAINWINDOW_HPP

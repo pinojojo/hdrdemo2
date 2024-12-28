@@ -3,6 +3,8 @@
 #include <QMenu>
 #include <QMenuBar>
 
+#include "SettingsDialog.hpp"
+
 #include "Common.h"
 #include "Global.hpp"
 #include "CameraViewPanel.h"
@@ -23,6 +25,26 @@ MainWindow::MainWindow(QWidget *parent)
     menu->addAction(deviceFinderAction);
     maskWindowToggleAction->setCheckable(true);
     menu->addAction(maskWindowToggleAction);
+
+    // 全局设置菜单
+    settingsAction = new QAction(tr("系统设置"), this);
+    settingsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma)); // Ctrl+,
+    settingsAction->setShortcutContext(Qt::ApplicationShortcut);
+    settingsAction->setStatusTip(tr("打开系统设置"));
+
+    // GLSL编辑器菜单
+    glslEditorAction = new QAction(tr("GLSL编辑器"), this);
+    glslEditorAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_G)); // Ctrl+G
+    glslEditorAction->setStatusTip(tr("打开GLSL编辑器"));
+    menu->addAction(glslEditorAction);
+    connect(glslEditorAction, &QAction::triggered, this, &MainWindow::openGLSLEditor);
+
+    // 初始化编辑器窗口
+    monacoEditor = new MonacoEditorWindow(this);
+
+    menu->addAction(settingsAction);
+    connect(settingsAction, &QAction::triggered, this, &MainWindow::openSettings);
+
     // 连接action的触发信号到槽函数
     connect(deviceFinderAction, &QAction::triggered, this, &MainWindow::toggleDeviceFinder);
     deviceFinderDialog->hide(); // Initially hidden
@@ -92,6 +114,25 @@ void MainWindow::toggleMaskWindow()
     else
     {
         GlobalResourceManager::getInstance().maskWindow->hide();
+    }
+}
+
+void MainWindow::openSettings()
+{
+    SettingsDialog dialog(this);
+    dialog.exec();
+}
+
+void MainWindow::openGLSLEditor()
+{
+    if (!monacoEditor->isVisible())
+    {
+        monacoEditor->show();
+    }
+    else
+    {
+        monacoEditor->raise();
+        monacoEditor->activateWindow();
     }
 }
 

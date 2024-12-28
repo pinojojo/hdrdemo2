@@ -30,7 +30,7 @@ void CameraControllerBar::setupUI()
     m_connectButton = createButton(":/icons8_broken_link.svg", tr("Connect to camera"));
     m_streamButton = createButton(":/icons8_play.svg", tr("Start/Stop stream"));
     m_captureButton = createButton(":/icons8_unsplash.svg", tr("Capture frame"));
-    m_recordingButton = createButton(":/icons8_video_record.svg", tr("Start/Stop recording"));
+    m_recordingButton = createButton(":/icons8_not_record.svg", tr("Start/Stop recording"));
     m_lutButton = createButton(":/icons8_histogram.svg", tr("Open LUT editor"));
 
     m_exposureSpinBox = new QSpinBox(this);
@@ -84,7 +84,7 @@ QPushButton *CameraControllerBar::createButton(const QString &iconPath, const QS
     button->setIcon(QIcon(iconPath));
     button->setToolTip(tooltip);
     button->setFixedSize(20, 20);
-    button->setIconSize(QSize(15, 15));
+    button->setIconSize(QSize(13, 13));
     button->setFocusPolicy(Qt::ClickFocus);
     return button;
 }
@@ -99,7 +99,7 @@ void CameraControllerBar::onRecordClicked()
     }
     else
     {
-        m_recordingButton->setIcon(QIcon(":/icons8_video_record.svg"));
+        m_recordingButton->setIcon(QIcon(":/icons8_not_record.svg"));
     }
 
     emit recordingClicked(m_isRecording);

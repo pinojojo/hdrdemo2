@@ -103,7 +103,9 @@
         "qhboxlayout": "cpp",
         "qmediarecorder": "cpp",
         "qmediacapturesession": "cpp",
-        "qvideoframeinput": "cpp"
+        "qvideoframeinput": "cpp",
+        "qwebengineview": "cpp",
+        "qtwebenginewidgets": "cpp"
     },
     "terminal.integrated.defaultProfile.windows": "Command Prompt",
     "terminal.integrated.env.windows": {

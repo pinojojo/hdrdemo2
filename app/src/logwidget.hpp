@@ -77,6 +77,24 @@ namespace Log
     // clang-format on
 };
 
+class LogListView : public QListView
+{
+    Q_OBJECT
+
+public:
+    explicit LogListView(QWidget *parent = nullptr) : QListView(parent) {}
+
+signals:
+    void wheelScrolled();
+
+protected:
+    void wheelEvent(QWheelEvent *event) override
+    {
+        QListView::wheelEvent(event);
+        emit wheelScrolled();
+    }
+};
+
 class LogWidget : public QWidget
 {
     Q_OBJECT
@@ -91,8 +109,15 @@ private slots:
             view->scrollToBottom();
     }
 
+    void onWheelScrolled()
+    {
+        // 当用户滚动时，暂时禁用自动滚动
+        m_autoScroll = false;
+        autoScrollButton->setChecked(false);
+    }
+
 private:
-    QListView *view;
+    LogListView *view;
     LogListModel *model;
     QTimer *timer;
     bool m_autoScroll = true;
