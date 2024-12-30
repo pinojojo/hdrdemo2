@@ -31,6 +31,15 @@ include_directories(${MVS_DIR}/Includes)
 file(GLOB MVS_LIB_FILE ${MVS_DIR}/Libraries/win64/*.lib)
 message(STATUS "MVS LIB: " ${MVS_LIB_FILE})
 
+# 寻找 PlayerOne
+get_filename_component(PLAYERONE_DIR ../extern/PlayerOne ABSOLUTE)
+include_directories(${PLAYERONE_DIR}/Includes)
+file(GLOB PLAYERONE_LIB_FILE ${PLAYERONE_DIR}/Libraries/x64/*.lib)
+message(STATUS "PlayerOne LIB: " ${PLAYERONE_LIB_FILE})
+
+file(GLOB PLAYERONE_DLL_FILES "${PLAYERONE_DIR}/Libraries/x64/*.dll")
+message(STATUS "PlayerOne DLL: " ${PLAYERONE_DLL_FILES})
+
 # 添加可执行文件
 add_executable(${PROJECT_NAME} WIN32)
 
@@ -67,3 +76,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     AUTOMOC ON
     AUTORCC ON
 )
+
+foreach(DLL_FILE ${PLAYERONE_DLL_FILES})
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${DLL_FILE}"
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    )
+endforeach()
