@@ -21,7 +21,10 @@ CameraViewPanel::CameraViewPanel(QString desc, QWidget *parent)
 
     if (m_desc == "test")
     {
-        // m_camera = new lzx::DummyTestCamera();
+        m_camera = new lzx::DummyTestCamera();
+    }
+    else if (m_desc == "PlayerOne")
+    {
         m_camera = new PlayerOne();
     }
 
@@ -128,7 +131,7 @@ void CameraViewPanel::onRecordClicked(bool record)
 
 void CameraViewPanel::onExposureChanged(int value)
 {
-    m_camera->set("exp", value);
+    m_camera->set("exposure", value);
 }
 
 void CameraViewPanel::onGainChanged(int value)

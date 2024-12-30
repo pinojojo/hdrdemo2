@@ -155,21 +155,24 @@ bool PlayerOne::open()
     notifyStateChanged("width", std::to_string(impl->width));
     notifyStateChanged("height", std::to_string(impl->height));
 
-    // 获取初始曝光时间
-    POAConfigValue exposValue;
-    POABool boolValue;
-    error = POAGetConfig(impl->cameraId, POA_EXPOSURE, &exposValue, &boolValue);
+    // 设置默认曝光时间
+    POAConfigValue exposure_value;
+    POABool isAuto = POA_FALSE;
+    exposure_value.intValue = 16666;
+    error = POASetConfig(impl->cameraId, POA_EXPOSURE,
+                         exposure_value, isAuto);
 
     if (error != POA_OK)
     {
-        Log::error(QString("POAGetConfig failed with error code %1").arg(error));
+        Log::error(QString("POASetConfig failed with error code %1").arg(error));
         return false;
     }
-    notifyStateChanged("exposure", std::to_string(exposValue.intValue));
+
+    notifyStateChanged("exposure", std::to_string(exposure_value.intValue));
 
     // 获取gain
     POAConfigValue gain_value;
-    POABool isAuto;
+
     error = POAGetConfig(impl->cameraId, POA_GAIN, &gain_value,
                          &isAuto);
     notifyStateChanged("gain", std::to_string(gain_value.intValue));
@@ -178,7 +181,7 @@ bool PlayerOne::open()
                   .arg(QString::fromStdString(impl->label))
                   .arg(impl->width)
                   .arg(impl->height)
-                  .arg(exposValue.intValue)
+                  .arg(exposure_value.intValue)
                   .arg(gain_value.intValue));
     return true;
 }
@@ -294,6 +297,7 @@ bool PlayerOne::getFrame(unsigned char *buffer, int &width, int &height, int &ch
                 return true;
             }
         }
+
         impl->tripleBuffer.get()->consumeDone();
     }
 
@@ -307,6 +311,23 @@ bool PlayerOne::set(const std::string &name, double value)
 
 bool PlayerOne::set(const std::string &name, int value)
 {
+    if (name == "exposure")
+    {
+
+        POAConfigValue exposure_value;
+        POABool isAuto = POA_FALSE;
+        exposure_value.intValue = value;
+        POAErrors error = POASetConfig(impl->cameraId, POA_EXPOSURE,
+                                       exposure_value, isAuto);
+
+        if (error != POA_OK)
+        {
+            Log::error(QString("POASetConfig failed with error code %1").arg(error));
+            return false;
+        }
+
+        notifyStateChanged("exposure", std::to_string(value));
+    }
     return false;
 }
 
@@ -322,6 +343,13 @@ bool PlayerOne::set(const std::string &name, const std::string &value)
 
 bool PlayerOne::get(const std::string &name, double &value)
 {
+
+    return false;
+}
+
+bool PlayerOne::get(const std::string &name, int &value)
+{
+
     // 曝光时间 us
     if (name == "ExposureTime")
     {
@@ -341,11 +369,7 @@ bool PlayerOne::get(const std::string &name, double &value)
 
         return true;
     }
-    return false;
-}
 
-bool PlayerOne::get(const std::string &name, int &value)
-{
     return false;
 }
 

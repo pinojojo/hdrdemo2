@@ -654,7 +654,6 @@ void FrameRenderer::paintGL()
     glClear(GL_COLOR_BUFFER_BIT);
 
     // 绘制相机画面部分
-    if (updateSuccess)
     {
         QOpenGLVertexArrayObject::Binder vaoBinder(&impl->vao);
         impl->shaderProgram->bind();
