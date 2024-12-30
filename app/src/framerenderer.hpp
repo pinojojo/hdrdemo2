@@ -31,6 +31,13 @@ public:
         DrawLines, // 绘制多边形模式，在显示图像的基础上，绘制多边形、线条之类的
     };
 
+    enum class HistogramSamplingMode
+    {
+        Fine = 1,   // 逐像素采样
+        Medium = 4, // 每4个像素采样一次
+        Coarse = 16 // 每16个像素采样一次
+    };
+
     explicit FrameRenderer(QWidget *parent = nullptr);
     virtual ~FrameRenderer();
 
@@ -49,6 +56,10 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void contextMenuEvent(QContextMenuEvent *event) override;
 
+signals:
+    // 发送直方图数据的信号
+    void histogramCalculated(const std::vector<int> &histogram, int maxValue);
+
 public slots:
     void onFrameChanged(const QImage &frame);
     void onFrameChangedDirectMode(const unsigned char *data, int width, int height, int channels, int bitDepth = 8);
@@ -66,6 +77,15 @@ public slots:
 
     void startRecording(QString filename);
     void stopRecording();
+
+    void setHistogramEnabled(bool enabled)
+    {
+        m_histogramEnabled = enabled;
+        Log::info(QString("Histogram enabled: %1").arg(enabled ? "true" : "false"));
+    }
+
+    void setHistogramBins(int bins) { m_histogramBins = bins; }
+    void setHistogramSamplingMode(HistogramSamplingMode mode) { m_histogramSamplingMode = mode; }
 
 private:
     FrameRenderer(const FrameRenderer &) = delete;
@@ -88,6 +108,11 @@ private:
     qint64 m_lastFrameTime = 0;
     const qint64 FRAME_INTERVAL = 20; // 50fps = 20ms per framebool
 
+    // 直方图
+    bool m_histogramEnabled = false;
+    int m_histogramBins = 100; // 默认100个bin
+    HistogramSamplingMode m_histogramSamplingMode = HistogramSamplingMode::Medium;
+
     struct Impl;
     Impl *impl;
     lzx::TripleBuffer<lzx::Frame> *frameBuffer; // 图像输入源，使用三缓，这样相机可以在另一个线程中不断地生产图像，这样能更好地区分真实帧率和显示帧率
@@ -99,4 +124,7 @@ private:
     std::vector<unsigned char> frameData; // 临时存储图像数据，用于绘制
 
     void updateOpenGLTexture(GLuint textureID, int width, int height, const GLubyte *data, int channels, int bitDepth);
+
+    void calculateHistogram(const unsigned char *data, int width, int height,
+                            int channels, int bitDepth);
 };

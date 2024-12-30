@@ -703,6 +703,61 @@ void FrameRenderer::paintGL()
     update();
 }
 
+void FrameRenderer::calculateHistogram(const unsigned char *data, int width, int height,
+                                       int channels, int bitDepth)
+{
+    if (!m_histogramEnabled || !data)
+        return;
+
+    // 确定最大值
+    int maxPossibleValue = (bitDepth <= 8) ? 255 : 65535;
+
+    // 初始化直方图数组
+    std::vector<int> histogram(m_histogramBins, 0);
+
+    // 确定采样步长
+    int samplingStep = static_cast<int>(m_histogramSamplingMode);
+
+    // 计算bin的宽度
+    float binWidth = static_cast<float>(maxPossibleValue + 1) / m_histogramBins;
+
+    // 遍历图像数据
+    for (int y = 0; y < height; y += samplingStep)
+    {
+        for (int x = 0; x < width; x += samplingStep)
+        {
+            // 计算像素位置
+            int pixelPos = (y * width + x) * channels;
+
+            // 获取像素值(只取第一个通道,通常是灰度值)
+            int pixelValue;
+            if (bitDepth <= 8)
+            {
+                pixelValue = data[pixelPos];
+            }
+            else
+            {
+                // 16位数据
+                unsigned short *data16 = (unsigned short *)data;
+                pixelValue = data16[pixelPos];
+            }
+
+            // 计算对应的bin索引
+            int binIndex = static_cast<int>(pixelValue / binWidth);
+            if (binIndex >= m_histogramBins)
+            {
+                binIndex = m_histogramBins - 1;
+            }
+
+            // 增加计数
+            histogram[binIndex]++;
+        }
+    }
+
+    // 发送信号
+    emit histogramCalculated(histogram, maxPossibleValue);
+}
+
 void FrameRenderer::wheelEvent(QWheelEvent *event)
 {
     // 计算缩放因子
@@ -810,6 +865,9 @@ void FrameRenderer::onFrameChangedDirectMode(const unsigned char *data, int widt
 
     // 更新纹理
     updateOpenGLTexture(impl->cameraTexture->textureId(), width, height, data, channels, bitDepth);
+
+    // 计算直方图
+    calculateHistogram(data, width, height, channels, bitDepth);
 
     // 自适应大小
     needAutoFit ? onAutoFit() : void();

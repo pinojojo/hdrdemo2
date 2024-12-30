@@ -7,6 +7,9 @@ GrayMappingWidget::GrayMappingWidget(QWidget *parent)
     : QWidget(parent)
 {
     setupUI();
+
+    m_lutCurve.resize(LUT_SIZE);
+
     connect(minSpinBox, &QDoubleSpinBox::editingFinished,
             this, &GrayMappingWidget::handleMinValueChanged);
     connect(maxSpinBox, &QDoubleSpinBox::editingFinished,
@@ -17,6 +20,23 @@ GrayMappingWidget::GrayMappingWidget(QWidget *parent)
     connect(plotWidget, &QCustomPlot::mousePress, this, &GrayMappingWidget::onMousePress);
     connect(plotWidget, &QCustomPlot::mouseMove, this, &GrayMappingWidget::onMouseMove);
     connect(plotWidget, &QCustomPlot::mouseRelease, this, &GrayMappingWidget::onMouseRelease);
+}
+
+void GrayMappingWidget::setHistogram(const std::vector<int> &histogram, int maxValue)
+{
+    int histogramPeak = *std::max_element(histogram.begin(), histogram.end());
+
+    this->m_histogram.clear();
+
+    if (m_histogram.size() != histogram.size())
+        this->m_histogram.resize(histogram.size());
+
+    for (int i = 0; i < m_histogram.size(); i++)
+    {
+        this->m_histogram[i] = (histogram[i] / (double)histogramPeak * 255); // 归一化到0-255,因为绘制的时候y轴是0-255
+    }
+
+    updatePlot();
 }
 
 void GrayMappingWidget::setupUI()
@@ -248,26 +268,27 @@ void GrayMappingWidget::updateLutCurve(bool fromDrag)
     double gamma = gammaSpinBox->value();
 
     // 计算LUT曲线
-    lutCurve.resize(LUT_SIZE);
+    m_lutCurve.resize(LUT_SIZE);
     for (int i = 0; i < LUT_SIZE; ++i)
     {
         double xNorm = i / 359.0;
         if (xNorm < minNorm)
         {
-            lutCurve[i] = 0;
+            m_lutCurve[i] = 0;
         }
         else if (xNorm > maxNorm)
         {
-            lutCurve[i] = 255;
+            m_lutCurve[i] = 255;
         }
         else
         {
-            lutCurve[i] = 255 * qPow((xNorm - minNorm) / (maxNorm - minNorm), 1.0 / gamma);
+            m_lutCurve[i] = 255 * qPow((xNorm - minNorm) / (maxNorm - minNorm), 1.0 / gamma);
         }
     }
 
     updatePlot();
-    emit mappingChanged(lutCurve);
+
+    emit mappingChanged(m_lutCurve);
 }
 
 void GrayMappingWidget::updatePlot()
@@ -275,17 +296,40 @@ void GrayMappingWidget::updatePlot()
     plotWidget->clearGraphs();
 
     // 添加直方图 TODO
+    {
+        auto histGraph = plotWidget->addGraph();
+        histGraph->setLineStyle(QCPGraph::lsLine);
+        QColor histColor = QColor(31, 53, 101, 200);
+        histGraph->setPen(QPen(histColor.lighter(200)));
+        histGraph->setBrush(QBrush(histColor));
+
+        if (m_histogram.size())
+        {
+            QVector<double> x(m_histogram.size()), y(m_histogram.size());
+            for (int i = 0; i < m_histogram.size(); ++i)
+            {
+                x[i] = i / (m_histogram.size() - 1.0) * 65535;
+                y[i] = m_histogram[i];
+            }
+            histGraph->setData(x, y);
+        }
+    }
 
     // 添加LUT曲线
-    auto lutGraph = plotWidget->addGraph();
-    QVector<double> x(LUT_SIZE), y(LUT_SIZE);
-    for (int i = 0; i < LUT_SIZE; ++i)
+
     {
-        x[i] = i / (LUT_SIZE - 1.0) * 65535;
-        y[i] = lutCurve[i];
+        auto lutGraph = plotWidget->addGraph();
+
+        QVector<double> x(LUT_SIZE), y(LUT_SIZE);
+        for (int i = 0; i < LUT_SIZE; ++i)
+        {
+            x[i] = i / (LUT_SIZE - 1.0) * 65535;
+            y[i] = m_lutCurve[i];
+        }
+        lutGraph->setData(x, y);
+
+        lutGraph->setPen(QPen(QColor(80, 134, 255), 2));
     }
-    lutGraph->setData(x, y);
-    lutGraph->setPen(QPen(QColor(80, 134, 255), 2));
 
     plotWidget->replot();
 }

@@ -5,6 +5,8 @@
 #include <QLabel>
 #include <QPainter>
 
+#include "logwidget.hpp"
+
 CameraControllerBar::CameraControllerBar(QWidget *parent)
     : QWidget(parent), m_isConnected(false), m_isStreaming(false)
 {
@@ -123,6 +125,9 @@ void CameraControllerBar::createConnections()
     connect(m_gainSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
             this, &CameraControllerBar::gainChanged);
 
+    connect(m_lutPopupWindow, &LutPopupWindow::visibilityChanged,
+            this, &CameraControllerBar::requestHistogram);
+
     // LUT按钮点击时显示LUT编辑器
     connect(m_lutButton, &QPushButton::clicked, this, [this]()
             {
@@ -141,7 +146,7 @@ void CameraControllerBar::setFPS(double fps)
     m_fpsLabel->setText(QString::number(fps, 'f', 1) + " FPS");
 }
 
-void CameraControllerBar::setStatus(QString status, QString value)
+void CameraControllerBar::onCameraStatusChanged(QString status, QString value)
 {
     if (status == "open")
     {
@@ -178,6 +183,11 @@ void CameraControllerBar::setStatus(QString status, QString value)
             m_streamButton->setIcon(QIcon(":/icons8_play.svg"));
         }
     }
+}
+
+void CameraControllerBar::onHistogramUpdated(const std::vector<int> &histogram, int maxValue)
+{
+    m_lutPopupWindow->updateHistogram(histogram, maxValue);
 }
 
 void CameraControllerBar::paintEvent(QPaintEvent *event)
@@ -220,6 +230,11 @@ LutPopupWindow::LutPopupWindow(QWidget *parent)
     qApp->installEventFilter(this);
 }
 
+void LutPopupWindow::updateHistogram(const std::vector<int> &histogram, int maxValue)
+{
+    m_mappingWidget->setHistogram(histogram, maxValue);
+}
+
 void LutPopupWindow::mousePressEvent(QMouseEvent *event)
 {
 }
@@ -241,12 +256,18 @@ void LutPopupWindow::focusOutEvent(QFocusEvent *event)
 void LutPopupWindow::hideEvent(QHideEvent *event)
 {
     qApp->removeEventFilter(this);
+
+    emit visibilityChanged(false); // 隐藏时发出信号
+
     QWidget::hideEvent(event);
 }
 
 void LutPopupWindow::showEvent(QShowEvent *event)
 {
     qApp->installEventFilter(this);
+
+    emit visibilityChanged(true); // 显示时发出信号
+
     QWidget::showEvent(event);
 }
 

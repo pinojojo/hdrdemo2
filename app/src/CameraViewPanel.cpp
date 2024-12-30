@@ -161,9 +161,17 @@ void CameraViewPanel::createConnections()
             this, &CameraViewPanel::onExposureChanged);
     connect(m_controlBar, &CameraControllerBar::gainChanged,
             this, &CameraViewPanel::onGainChanged);
+
+    // 连接直方图请求信号
+    connect(m_controlBar, &CameraControllerBar::requestHistogram,
+            m_frameRenderer, &FrameRenderer::setHistogramEnabled);
+
+    // 将 FrameRenderer 的直方图数据信号连接到 CameraControllerBar
+    connect(m_frameRenderer, &FrameRenderer::histogramCalculated,
+            m_controlBar, &CameraControllerBar::onHistogramUpdated);
 }
 
 void CameraViewPanel::handleCameraState(const std::string &state, const std::string &value)
 {
-    m_controlBar->setStatus(QString::fromStdString(state), QString::fromStdString(value));
+    m_controlBar->onCameraStatusChanged(QString::fromStdString(state), QString::fromStdString(value));
 }

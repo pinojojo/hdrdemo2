@@ -12,6 +12,8 @@ class GrayMappingWidget : public QWidget
 public:
     explicit GrayMappingWidget(QWidget *parent = nullptr);
 
+    void setHistogram(const std::vector<int> &histogram, int maxValue);
+
 signals:
     void mappingChanged(const QVector<double> &lut);
     void rangeChanged(double min, double max);
@@ -30,8 +32,8 @@ private:
     QCPItemLine *currentDraggingLine; // 当前正在拖动的线
 
     // Data
-    QVector<double> histogram; // 存储直方图数据
-    QVector<double> lutCurve;  // 存储LUT曲线数据
+    QVector<double> m_histogram; // 存储直方图数据
+    QVector<double> m_lutCurve;  // 存储LUT曲线数据
 
     void setupUI();
     void updateLutCurve(bool fromDrag = false);

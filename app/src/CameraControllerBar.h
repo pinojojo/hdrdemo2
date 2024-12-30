@@ -15,24 +15,20 @@ class LutPopupWindow : public QWidget
 public:
     explicit LutPopupWindow(QWidget *parent = nullptr);
 
+    void updateHistogram(const std::vector<int> &histogram, int maxValue);
+
+signals:
+    void visibilityChanged(bool visible);
+
 protected:
-    // 用于实现窗口拖动
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
 
-    // 用于实现失去焦点时自动隐藏
     void focusOutEvent(QFocusEvent *event) override;
-
-    // hideEvent() 用于实现窗口隐藏时自动释放焦点
     void hideEvent(QHideEvent *event) override;
-
-    // showEvent() 用于实现窗口显示时自动获取焦点
     void showEvent(QShowEvent *event) override;
-
-    // eventFilter() 用于实现窗口外点击自动隐藏
     bool eventFilter(QObject *watched, QEvent *event) override;
-
     void paintEvent(QPaintEvent *event) override;
 
 private:
@@ -54,7 +50,8 @@ public:
     void setFPS(double fps);
 
 public slots:
-    void setStatus(QString status, QString value);
+    void onCameraStatusChanged(QString status, QString value);
+    void onHistogramUpdated(const std::vector<int> &histogram, int maxValue);
 
 signals:
     void connectClicked(bool connect);
@@ -63,6 +60,7 @@ signals:
     void recordingClicked(bool record);
     void exposureChanged(int value);
     void gainChanged(int value);
+    void requestHistogram(bool enable);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
