@@ -46,12 +46,10 @@ public:
     explicit CameraControllerBar(QWidget *parent = nullptr);
     ~CameraControllerBar();
 
-    // 设置帧率显示
-    void setFPS(double fps);
-
 public slots:
     void onCameraStatusChanged(QString status, QString value);
     void onHistogramUpdated(const std::vector<int> &histogram, int maxValue);
+    void onFPSUpdated(double fps);
 
 signals:
     void connectClicked(bool connect);

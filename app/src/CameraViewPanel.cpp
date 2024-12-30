@@ -178,6 +178,10 @@ void CameraViewPanel::createConnections()
     // 将 FrameRenderer 的直方图数据信号连接到 CameraControllerBar
     connect(m_frameRenderer, &FrameRenderer::histogramCalculated,
             m_controlBar, &CameraControllerBar::onHistogramUpdated);
+
+    // 将 FrameRenderer 的FPS信号连接到 CameraControllerBar
+    connect(m_frameRenderer, &FrameRenderer::fpsUpdated,
+            m_controlBar, &CameraControllerBar::onFPSUpdated);
 }
 
 void CameraViewPanel::handleCameraState(const std::string &state, const std::string &value)

@@ -55,8 +55,9 @@ protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
 
 signals:
-    // 发送直方图数据的信号
+
     void histogramCalculated(const std::vector<int> &histogram, int maxValue);
+    void fpsUpdated(double fps);
 
 public slots:
     void onFrameChanged(const QImage &frame);
@@ -110,6 +111,12 @@ private:
     bool m_histogramEnabled = false;
     int m_histogramBins = 100; // 默认100个bin
     HistogramSamplingMode m_histogramSamplingMode = HistogramSamplingMode::Medium;
+
+    // FPS 计算相关成员
+    QElapsedTimer m_fpsTimer;
+    int m_frameCount = 0;
+    qint64 m_lastFpsUpdate = 0;
+    static constexpr int FPS_UPDATE_INTERVAL = 1000; // 每秒更新一次FPS
 
     struct Impl;
     Impl *impl;

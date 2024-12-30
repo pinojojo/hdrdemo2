@@ -483,6 +483,7 @@ FrameRenderer::FrameRenderer(QWidget *parent)
     impl->lastSize = this->size();
 
     frameData.resize(2048 * 2048 * 4); // 足够大
+    m_fpsTimer.invalidate();           // 初始化计时器
 }
 
 FrameRenderer::~FrameRenderer()
@@ -530,6 +531,27 @@ void FrameRenderer::paintGL()
         {
             onFrameChangedDirectMode(frameData.data(), width, height, channels, bitDepth);
             updateSuccess = true;
+
+            // FPS 计算
+            if (!m_fpsTimer.isValid())
+            {
+                m_fpsTimer.start();
+                m_lastFpsUpdate = 0;
+                m_frameCount = 0;
+            }
+
+            m_frameCount++;
+            qint64 currentTime = m_fpsTimer.elapsed();
+
+            // 每秒更新一次FPS
+            if (currentTime - m_lastFpsUpdate >= FPS_UPDATE_INTERVAL)
+            {
+                double fps = m_frameCount * 1000.0 / (currentTime - m_lastFpsUpdate);
+                emit fpsUpdated(fps);
+
+                m_frameCount = 0;
+                m_lastFpsUpdate = currentTime;
+            }
         }
     }
 

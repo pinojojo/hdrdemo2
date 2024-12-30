@@ -141,7 +141,7 @@ void CameraControllerBar::createConnections()
             });
 }
 
-void CameraControllerBar::setFPS(double fps)
+void CameraControllerBar::onFPSUpdated(double fps)
 {
     m_fpsLabel->setText(QString::number(fps, 'f', 1) + " FPS");
 }
