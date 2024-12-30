@@ -2,6 +2,7 @@
 #include <QVBoxLayout>
 
 #include "DummyTestCamera.h"
+#include "PlayerOne.hpp"
 #include "Settings.hpp"
 
 #include "logwidget.hpp"
@@ -20,7 +21,8 @@ CameraViewPanel::CameraViewPanel(QString desc, QWidget *parent)
 
     if (m_desc == "test")
     {
-        m_camera = new lzx::DummyTestCamera();
+        // m_camera = new lzx::DummyTestCamera();
+        m_camera = new PlayerOne();
     }
 
     // 设置状态回调

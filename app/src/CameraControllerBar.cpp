@@ -40,7 +40,7 @@ void CameraControllerBar::setupUI()
     m_exposureSpinBox->setRange(0, 1000000);
     m_exposureSpinBox->setSingleStep(1);
     m_exposureSpinBox->setSuffix(" μs");
-    m_exposureSpinBox->setFixedWidth(90);
+    m_exposureSpinBox->setFixedWidth(120);
     m_exposureSpinBox->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_exposureSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
 
@@ -182,6 +182,17 @@ void CameraControllerBar::onCameraStatusChanged(QString status, QString value)
             m_isStreaming = false;
             m_streamButton->setIcon(QIcon(":/icons8_play.svg"));
         }
+    }
+
+    if (status == "exposure")
+    {
+        m_exposureSpinBox->setValue(value.toInt());
+    }
+
+    // gain
+    if (status == "gain")
+    {
+        m_gainSpinBox->setValue(value.toInt());
     }
 }
 

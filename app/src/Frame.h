@@ -11,8 +11,6 @@ namespace lzx
         // 无参 构造函数
         Frame() : m_width(0), m_height(0), m_channels(0), m_bitDepth(8)
         {
-            s_sequenceNumber++;
-            m_sequenceNumber = s_sequenceNumber;
         }
 
         // 带参，全0填充
@@ -23,8 +21,6 @@ namespace lzx
               m_bitDepth(bitDepth),
               m_data(width * height * channels * (bitDepth > 8 ? 2 : 1), 0)
         {
-            s_sequenceNumber++;
-            m_sequenceNumber = s_sequenceNumber;
         }
 
         // 带参
@@ -34,8 +30,6 @@ namespace lzx
               m_channels(channels),
               m_bitDepth(bitDepth), m_data(data)
         {
-            s_sequenceNumber++;
-            m_sequenceNumber = s_sequenceNumber;
         }
 
         ~Frame() = default;
@@ -43,7 +37,9 @@ namespace lzx
         int width() const { return m_width; }
         int height() const { return m_height; }
         int channels() const { return m_channels; }
-        int sn() const { return m_sequenceNumber; }
+        int bitDepth() const { return m_bitDepth; }
+        size_t sn() const { return m_sequenceNumber; }
+        void setSequenceNumber(size_t sn) { m_sequenceNumber = sn; }
 
         void fill(const std::vector<unsigned char> &color)
         {
@@ -86,6 +82,12 @@ namespace lzx
         size_t bufferSize() const
         {
             return m_data.size();
+        }
+
+        // const function to get a pointer to the internal buffer, used for reading data from the buffer
+        const unsigned char *buffer() const
+        {
+            return m_data.data();
         }
 
     private:

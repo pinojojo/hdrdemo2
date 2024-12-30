@@ -41,6 +41,8 @@ public:
 private:
     struct Impl;
     std::unique_ptr<Impl> impl;
+
+    size_t m_lastGotFrameCount = 0;
 };
 
 #endif
