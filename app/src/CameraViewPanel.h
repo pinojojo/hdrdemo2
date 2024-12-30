@@ -39,6 +39,5 @@ private:
     FrameRenderer *m_frameRenderer;
     CameraControllerBar *m_controlBar;
     lzx::ICamera *m_camera;
-    lzx::TripleBuffer<lzx::Frame> *m_frameBuffer;
     bool m_isStreaming;
 };

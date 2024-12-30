@@ -490,11 +490,6 @@ FrameRenderer::~FrameRenderer()
     delete impl;
 }
 
-void FrameRenderer::setFrameBuffer(lzx::TripleBuffer<lzx::Frame> *tripleBuffer)
-{
-    frameBuffer = tripleBuffer;
-}
-
 std::vector<MaskPolygon> FrameRenderer::getMaskPolygons() const
 {
     // Convert Impl polygons to MaskPolygon

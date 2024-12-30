@@ -40,8 +40,6 @@ public:
 
     explicit FrameRenderer(QWidget *parent = nullptr);
     virtual ~FrameRenderer();
-
-    void setFrameBuffer(lzx::TripleBuffer<lzx::Frame> *tripleBuffer);
     void setAssociateCamera(lzx::ICamera *camera) { associateCamera = camera; }
     std::vector<MaskPolygon> getMaskPolygons() const;
 
@@ -115,9 +113,9 @@ private:
 
     struct Impl;
     Impl *impl;
-    lzx::TripleBuffer<lzx::Frame> *frameBuffer; // 图像输入源，使用三缓，这样相机可以在另一个线程中不断地生产图像，这样能更好地区分真实帧率和显示帧率
-    Mode currentMode = Mode::Normal;            // 当前的绘制模式
-    bool enableUpdate = true;                   // 是否允许持续更新
+
+    Mode currentMode = Mode::Normal; // 当前的绘制模式
+    bool enableUpdate = true;        // 是否允许持续更新
 
     lzx::ICamera *associateCamera = nullptr; // 关联的相机
 

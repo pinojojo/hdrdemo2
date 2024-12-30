@@ -67,6 +67,7 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::Multimedia
     Qt6::MultimediaWidgets
     ${MVS_LIB_FILE}
+    ${PLAYERONE_LIB_FILE}
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

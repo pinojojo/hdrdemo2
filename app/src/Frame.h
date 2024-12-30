@@ -8,21 +8,31 @@ namespace lzx
     class Frame
     {
     public:
-        Frame() : m_width(0), m_height(0), m_channels(0)
+        // 无参 构造函数
+        Frame() : m_width(0), m_height(0), m_channels(0), m_bitDepth(8)
         {
             s_sequenceNumber++;
             m_sequenceNumber = s_sequenceNumber;
         }
 
-        Frame(int width, int height, int channels)
-            : m_width(width), m_height(height), m_channels(channels), m_data(width * height * channels, 0)
+        // 带参，全0填充
+        Frame(int width, int height, int channels, int bitDepth = 8)
+            : m_width(width),
+              m_height(height),
+              m_channels(channels),
+              m_bitDepth(bitDepth),
+              m_data(width * height * channels * (bitDepth > 8 ? 2 : 1), 0)
         {
             s_sequenceNumber++;
             m_sequenceNumber = s_sequenceNumber;
         }
 
-        Frame(int width, int height, int channels, const std::vector<unsigned char> &data)
-            : m_width(width), m_height(height), m_channels(channels), m_data(data)
+        // 带参
+        Frame(int width, int height, int channels, const std::vector<unsigned char> &data, int bitDepth = 8)
+            : m_width(width),
+              m_height(height),
+              m_channels(channels),
+              m_bitDepth(bitDepth), m_data(data)
         {
             s_sequenceNumber++;
             m_sequenceNumber = s_sequenceNumber;
@@ -37,17 +47,20 @@ namespace lzx
 
         void fill(const std::vector<unsigned char> &color)
         {
-            if (color.size() != m_channels)
+            size_t bytesPerPixelComponent = (m_bitDepth > 8) ? 2 : 1;
+            if (color.size() != m_channels * bytesPerPixelComponent)
             {
                 return;
             }
-            else
+
+            for (int i = 0; i < m_width * m_height; i++)
             {
-                for (int i = 0; i < m_width * m_height; i++)
+                for (int j = 0; j < m_channels; j++)
                 {
-                    for (int j = 0; j < m_channels; j++)
+                    for (size_t b = 0; b < bytesPerPixelComponent; b++)
                     {
-                        m_data[i * m_channels + j] = color[j];
+                        m_data[i * m_channels * bytesPerPixelComponent + j * bytesPerPixelComponent + b] =
+                            color[j * bytesPerPixelComponent + b];
                     }
                 }
             }
@@ -55,14 +68,15 @@ namespace lzx
 
         void fill(const unsigned char *color)
         {
-            memcpy(m_data.data(), color, m_width * m_height * m_channels);
+            size_t bytesPerPixel = m_channels * (m_bitDepth > 8 ? 2 : 1);
+            memcpy(m_data.data(), color, m_width * m_height * bytesPerPixel);
         }
 
         const unsigned char *data() const { return m_data.data(); }
 
         static size_t sequenceNumber() { return s_sequenceNumber; }
 
-        // Function to get a pointer to the internal buffer
+        // Function to get a pointer to the internal buffer, used for writing data to the buffer
         unsigned char *buffer()
         {
             return m_data.data();
@@ -74,16 +88,11 @@ namespace lzx
             return m_data.size();
         }
 
-        // Function to get a const pointer to the internal buffer (for read-only access)
-        const unsigned char *buffer() const
-        {
-            return m_data.data();
-        }
-
     private:
         int m_width;
         int m_height;
         int m_channels;
+        int m_bitDepth;
         std::vector<unsigned char> m_data;
 
         static size_t s_sequenceNumber;

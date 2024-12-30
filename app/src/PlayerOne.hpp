@@ -1,0 +1,46 @@
+#ifndef PLAYERONE_HPP
+#define PLAYERONE_HPP
+
+#include "ICamera.hpp"
+#include "Frame.h"
+#include "TripleBuffer.h"
+#include <string>
+#include <vector>
+#include <memory>
+#include <thread>
+#include <chrono>
+#include <map>
+
+class PlayerOne : public lzx::ICamera
+{
+public:
+    static std::map<int, std::string> getALLCameraIDName();
+
+    PlayerOne();
+
+    virtual ~PlayerOne() = default;
+
+    std::string label() override;
+    bool open() override;
+    bool close() override;
+    bool start() override;
+    bool stop() override;
+    bool snap() override;
+    virtual bool streaming() override;
+    virtual bool getFrame(unsigned char *buffer, int &width, int &height, int &channels, int &bitDepth) override;
+
+    bool set(const std::string &name, double value) override;
+    bool set(const std::string &name, int value) override;
+    bool set(const std::string &name, bool value) override;
+    bool set(const std::string &name, const std::string &value) override;
+    bool get(const std::string &name, double &value) override;
+    bool get(const std::string &name, int &value) override;
+    bool get(const std::string &name, bool &value) override;
+    bool get(const std::string &name, std::string &value) override;
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl;
+};
+
+#endif

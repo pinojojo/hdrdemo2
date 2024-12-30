@@ -7,7 +7,13 @@
 #include "logwidget.hpp"
 
 CameraViewPanel::CameraViewPanel(QString desc, QWidget *parent)
-    : QWidget(parent), m_desc(desc), m_layout(nullptr), m_frameRenderer(nullptr), m_controlBar(nullptr), m_camera(nullptr), m_frameBuffer(new lzx::TripleBuffer<lzx::Frame>()), m_isStreaming(false)
+    : QWidget(parent),
+      m_desc(desc),
+      m_layout(nullptr),
+      m_frameRenderer(nullptr),
+      m_controlBar(nullptr),
+      m_camera(nullptr),
+      m_isStreaming(false)
 {
     setupUI();
     createConnections();
@@ -38,7 +44,6 @@ CameraViewPanel::~CameraViewPanel()
         m_camera->stop();
         m_camera->close();
     }
-    delete m_frameBuffer;
 }
 
 void CameraViewPanel::setCamera(lzx::ICamera *camera)
@@ -50,7 +55,6 @@ void CameraViewPanel::setCamera(lzx::ICamera *camera)
     }
 
     m_camera = camera;
-    m_frameRenderer->setFrameBuffer(m_frameBuffer);
 }
 
 void CameraViewPanel::onConnectClicked(bool connect)
