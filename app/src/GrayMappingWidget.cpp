@@ -195,6 +195,8 @@ void GrayMappingWidget::onMouseRelease(QMouseEvent *event)
     {
         currentDraggingLine = nullptr;
         plotWidget->setCursor(Qt::ArrowCursor);
+
+        emit lutChanged(minSpinBox->value(), maxSpinBox->value(), gammaSpinBox->value());
     }
 }
 
@@ -222,6 +224,8 @@ void GrayMappingWidget::handleMinValueChanged()
     minSpinBox->setValue(qBound(0.0, val, maxSpinBox->value() - 1));
 
     updateLutCurve();
+
+    emit lutChanged(minSpinBox->value(), maxSpinBox->value(), gammaSpinBox->value());
 }
 
 void GrayMappingWidget::handleMaxValueChanged()
@@ -231,6 +235,13 @@ void GrayMappingWidget::handleMaxValueChanged()
     maxSpinBox->setValue(qBound(minSpinBox->value() + 1, val, 65535.0));
 
     updateLutCurve();
+
+    emit lutChanged(minSpinBox->value(), maxSpinBox->value(), gammaSpinBox->value());
+}
+
+void GrayMappingWidget::handleGammaValueChanged()
+{
+    emit lutChanged(minSpinBox->value(), maxSpinBox->value(), gammaSpinBox->value());
 }
 
 void GrayMappingWidget::updateLutCurve(bool fromDrag)
@@ -288,7 +299,7 @@ void GrayMappingWidget::updateLutCurve(bool fromDrag)
 
     updatePlot();
 
-    emit mappingChanged(m_lutCurve);
+    emit lutChanged(minSpinBox->value(), maxSpinBox->value(), gammaSpinBox->value());
 }
 
 void GrayMappingWidget::updatePlot()
