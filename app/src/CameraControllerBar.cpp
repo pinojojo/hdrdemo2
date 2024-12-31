@@ -46,7 +46,7 @@ void CameraControllerBar::setupUI()
 
     m_gainSpinBox = new QSpinBox(this);
     m_gainSpinBox->setPrefix("Gain: ");
-    m_gainSpinBox->setRange(0, 100);
+    m_gainSpinBox->setRange(0, 200);
     m_gainSpinBox->setSingleStep(1);
     m_gainSpinBox->setFixedWidth(65);
     m_gainSpinBox->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
