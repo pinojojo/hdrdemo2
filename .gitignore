@@ -7,7 +7,7 @@ bin/
 
 # 依赖库
 lib/
-*.dll
+
 *.so
 *.dylib
 
