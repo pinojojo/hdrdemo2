@@ -15,9 +15,7 @@ public:
     void setHistogram(const std::vector<int> &histogram, int maxValue);
 
 signals:
-    void mappingChanged(const QVector<double> &lut);
-    void rangeChanged(double min, double max);
-    void gammaChanged(double gamma);
+    void lutChanged(double min, double max, double gamma); // Added lutChanged signal
 
 private:
     const int LUT_SIZE = 360;
@@ -47,4 +45,5 @@ private:
 private slots:
     void handleMinValueChanged();
     void handleMaxValueChanged();
+    void handleGammaValueChanged();
 };

@@ -311,6 +311,7 @@ bool PlayerOne::set(const std::string &name, double value)
 
 bool PlayerOne::set(const std::string &name, int value)
 {
+    // exposure
     if (name == "exposure")
     {
 
@@ -328,6 +329,25 @@ bool PlayerOne::set(const std::string &name, int value)
 
         notifyStateChanged("exposure", std::to_string(value));
     }
+
+    // gain
+    if (name == "gain")
+    {
+        POAConfigValue gain_value;
+        POABool isAuto = POA_FALSE;
+        gain_value.intValue = value;
+        POAErrors error = POASetConfig(impl->cameraId, POA_GAIN,
+                                       gain_value, isAuto);
+
+        if (error != POA_OK)
+        {
+            Log::error(QString("POASetConfig failed with error code %1").arg(error));
+            return false;
+        }
+
+        notifyStateChanged("gain", std::to_string(value));
+    }
+
     return false;
 }
 
