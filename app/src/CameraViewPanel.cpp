@@ -3,6 +3,8 @@
 
 #include "DummyTestCamera.h"
 #include "PlayerOne.hpp"
+#include "USBCamera.hpp"
+
 #include "Settings.hpp"
 
 #include "logwidget.hpp"
@@ -19,13 +21,21 @@ CameraViewPanel::CameraViewPanel(QString desc, QWidget *parent)
     setupUI();
     createConnections();
 
-    if (m_desc == "test")
+    if (m_desc == "test8")
     {
-        m_camera = new lzx::DummyTestCamera();
+        m_camera = new lzx::DummyTestCamera(8);
+    }
+    else if (m_desc == "test16")
+    {
+        m_camera = new lzx::DummyTestCamera(16);
     }
     else if (m_desc == "PlayerOne")
     {
         m_camera = new PlayerOne();
+    }
+    else if (m_desc == "MVS")
+    {
+        m_camera = new USBCamera("Hikvision");
     }
 
     // 设置状态回调

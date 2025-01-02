@@ -80,32 +80,39 @@ struct USBCamera::Impl
     bool lowLatencyMode = false;
     std::unique_ptr<std::thread> thread;
 
+    // 不同于其他相机，海康相机采集数据还需要共享给Mask窗口，所以这里数据要放大全局变量的三缓冲区中
     void grabFunction()
     {
         MV_FRAME_OUT stOutFrame = {0}; // 帧数据
+
+        size_t frameCount = 0;
+
         while (streaming)
         {
             int nRet = MV_CC_GetImageBuffer(this->handle, &stOutFrame, 1000);
+
             if (MV_OK == nRet)
             {
                 int width = stOutFrame.stFrameInfo.nWidth;
                 int height = stOutFrame.stFrameInfo.nHeight;
                 int channels = stOutFrame.stFrameInfo.nFrameLen / (width * height);
 
-                qDebug() << "width: " << width << "height: " << height << "channels: " << channels;
-
                 if (stOutFrame.stFrameInfo.enPixelType == PixelType_Gvsp_Mono8)
                 {
                     qDebug() << "PixelType_Gvsp_Mono8 Got";
                     lzx::Frame frame(width, height, channels);
                     frame.fill(stOutFrame.pBufAddr);
+
+                    frame.setSequenceNumber(frameCount++);
+
                     GlobalResourceManager::getInstance().tripleBuffer->produce(std::move(frame));
                 }
                 else
                 {
-                    Log::error("Unsupported pixel format");
+                    Log::error("Hikvision Unsupported pixel format");
                 }
             }
+
             MV_CC_FreeImageBuffer(this->handle, &stOutFrame);
         }
     }
@@ -368,17 +375,47 @@ bool USBCamera::open()
                           .c_str());
         }
 
+        // 获取初始曝光
+        {
+            MVCC_FLOATVALUE stParam = {0};
+            nRet = MV_CC_GetFloatValue(impl->handle, "ExposureTime", &stParam);
+            if (MV_OK != nRet)
+            {
+                Log::warn("Get exposure time failed");
+            }
+
+            notifyStateChanged("exposure", std::to_string(int(stParam.fCurValue)));
+        }
+
+        // 获取初始gain
+        {
+            MVCC_FLOATVALUE stParam = {0};
+            nRet = MV_CC_GetFloatValue(impl->handle, "Gain", &stParam);
+            if (MV_OK != nRet)
+            {
+                Log::warn("Get gain failed");
+            }
+
+            notifyStateChanged("gain", std::to_string(int(stParam.fCurValue)));
+        }
+
+        notifyStateChanged("open", "true");
+
         return true;
     }
     else
     {
-        Log::error("Invalid device id");
+        Log::error("Can not Open Hikvision Camera");
+
+        notifyStateChanged("open", "false");
         return false;
     }
 }
 
 bool USBCamera::close()
 {
+    this->stop();
+
     if (impl->handle != nullptr)
     {
         // Close the device
@@ -399,6 +436,8 @@ bool USBCamera::close()
 
         impl->handle = nullptr;
 
+        notifyStateChanged("open", "false");
+
         return true;
     }
     else
@@ -413,6 +452,7 @@ bool USBCamera::start()
     if (impl->handle == nullptr)
     {
         Log::error("Handle is null");
+        notifyStateChanged("stream", "false");
         return false;
     }
     else
@@ -423,6 +463,7 @@ bool USBCamera::start()
         if (MV_OK != nRet)
         {
             Log::error("Start grabbing failed");
+            notifyStateChanged("stream", "false");
             return false;
         }
 
@@ -430,6 +471,7 @@ bool USBCamera::start()
         impl->streaming = true;
         impl->thread = std::make_unique<std::thread>(&Impl::grabFunction, impl.get());
         Log::info("Start streaming thread");
+        notifyStateChanged("stream", "true");
         return true;
     }
 }
@@ -438,7 +480,8 @@ bool USBCamera::stop()
 {
     if (impl->handle == nullptr || impl->thread == nullptr || !impl->streaming)
     {
-        Log::error("Not streaming");
+        Log::warn("Not streaming");
+
         return false;
     }
     else
@@ -458,11 +501,14 @@ bool USBCamera::stop()
             if (MV_OK != nRet)
             {
                 Log::error("Stop grabbing failed");
+
                 return false;
             }
         }
 
+        notifyStateChanged("stream", "false");
         Log::info("Camera Stoppped");
+
         return true;
     }
 }
@@ -472,9 +518,49 @@ bool USBCamera::snap()
     return false;
 }
 
+bool USBCamera::streaming()
+{
+    return impl->streaming;
+}
+
+bool USBCamera::getFrame(unsigned char *buffer, int &width, int &height, int &channels, int &bitDepth)
+{
+    if (!buffer)
+    {
+        Log::error("Hikvision Invalid buffer pointer");
+        return false;
+    }
+
+    if (impl->streaming)
+    {
+        lzx::Frame *frame = GlobalResourceManager::getInstance().tripleBuffer->consume();
+
+        if (frame && frame->width() > 0 && frame->height() > 0)
+        {
+            width = frame->width();
+            height = frame->height();
+            channels = frame->channels();
+            bitDepth = frame->bitDepth();
+
+            auto sn = frame->sn();
+            if (sn > m_lastGotFrameCount)
+            {
+                m_lastGotFrameCount = sn;
+                memcpy(buffer, frame->buffer(), frame->bufferSize());
+                GlobalResourceManager::getInstance().tripleBuffer->consumeDone();
+                return true;
+            }
+        }
+
+        GlobalResourceManager::getInstance().tripleBuffer->consumeDone();
+    }
+
+    return false;
+}
+
 bool USBCamera::set(const std::string &name, double value)
 {
-    if (name == "ExposureTime")
+    if (name == "ExposureTime" || name == "exposure")
     {
         MVCC_FLOATVALUE stParam = {0};
         stParam.fCurValue = value;
@@ -484,12 +570,12 @@ bool USBCamera::set(const std::string &name, double value)
             Log::error("Set exposure time failed");
             return false;
         }
-        else
-        {
-            return true;
-        }
+
+        notifyStateChanged("exposure", std::to_string(int(value)));
+
+        return true;
     }
-    else if (name == "Gain")
+    else if (name == "Gain" || name == "gain")
     {
         MVCC_FLOATVALUE stParam = {0};
         stParam.fCurValue = value;
@@ -499,10 +585,9 @@ bool USBCamera::set(const std::string &name, double value)
             Log::error("Set Gain failed");
             return false;
         }
-        else
-        {
-            return true;
-        }
+
+        notifyStateChanged("gain", std::to_string(int(value)));
+        return true;
     }
     return false;
 }
@@ -583,7 +668,38 @@ bool USBCamera::set(const std::string &name, int value)
         }
     }
 
-    Log::error("Unsupported parameter");
+    if (name == "ExposureTime" || name == "exposure")
+    {
+        MVCC_FLOATVALUE stParam = {0};
+        stParam.fCurValue = value;
+        int nRet = MV_CC_SetFloatValue(impl->handle, "ExposureTime", stParam.fCurValue);
+        if (MV_OK != nRet)
+        {
+            Log::error("Set exposure time failed");
+            return false;
+        }
+
+        notifyStateChanged("exposure", std::to_string(int(value)));
+
+        return true;
+    }
+    else if (name == "Gain" || name == "gain")
+    {
+        MVCC_FLOATVALUE stParam = {0};
+        stParam.fCurValue = value;
+        int nRet = MV_CC_SetFloatValue(impl->handle, "Gain", stParam.fCurValue);
+        if (MV_OK != nRet)
+        {
+            Log::error("Set Gain failed");
+            return false;
+        }
+
+        notifyStateChanged("gain", std::to_string(int(value)));
+        return true;
+    }
+
+    Log::error(QString("Unsupported  parameter: %1").arg(QString::fromStdString(name)));
+
     return false;
 }
 
