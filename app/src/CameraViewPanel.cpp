@@ -9,14 +9,15 @@
 
 #include "logwidget.hpp"
 
-CameraViewPanel::CameraViewPanel(QString desc, QWidget *parent)
+CameraViewPanel::CameraViewPanel(QString desc, QWidget *parent, bool isReference)
     : QWidget(parent),
       m_desc(desc),
       m_layout(nullptr),
       m_frameRenderer(nullptr),
       m_controlBar(nullptr),
       m_camera(nullptr),
-      m_isStreaming(false)
+      m_isStreaming(false),
+      m_isReference(isReference)
 {
     setupUI();
     createConnections();
@@ -156,7 +157,7 @@ void CameraViewPanel::setupUI()
     m_layout->setSpacing(0);
 
     // 创建渲染器
-    m_frameRenderer = new FrameRenderer(this);
+    m_frameRenderer = new FrameRenderer(this, m_isReference);
     m_layout->addWidget(m_frameRenderer, 1); // 1表示拉伸比例
 
     // 创建控制栏

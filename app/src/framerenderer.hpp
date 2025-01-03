@@ -38,7 +38,7 @@ public:
         Coarse = 16 // 每16个像素采样一次
     };
 
-    explicit FrameRenderer(QWidget *parent = nullptr);
+    explicit FrameRenderer(QWidget *parent = nullptr, bool isReference = false);
     virtual ~FrameRenderer();
     void setAssociateCamera(lzx::ICamera *camera) { associateCamera = camera; }
     std::vector<MaskPolygon> getMaskPolygons() const;

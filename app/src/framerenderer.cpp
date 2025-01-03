@@ -14,6 +14,8 @@
 #include <QMediaFormat>
 #include <QMediaCaptureSession>
 
+#include "Global.hpp"
+
 #include "logwidget.hpp"
 #include "polygonrenderer.hpp"
 
@@ -464,7 +466,7 @@ struct FrameRenderer::Impl
     }
 };
 
-FrameRenderer::FrameRenderer(QWidget *parent)
+FrameRenderer::FrameRenderer(QWidget *parent, bool isReference)
     : QOpenGLWidget(parent), impl(new Impl(*this))
 {
     setMouseTracking(true);
@@ -484,6 +486,12 @@ FrameRenderer::FrameRenderer(QWidget *parent)
 
     frameData.resize(2048 * 2048 * 4); // 足够大
     m_fpsTimer.invalidate();           // 初始化计时器
+
+    if (isReference)
+    {
+        Log::info("Reference frame renderer created");
+        GlobalResourceManager::getInstance().setRefFrameRenderer(this);
+    }
 }
 
 FrameRenderer::~FrameRenderer()

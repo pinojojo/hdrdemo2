@@ -23,39 +23,50 @@ public:
         QHBoxLayout *hbox1 = new QHBoxLayout();
 
         QSpinBox *globalIntensitySpinBox = new QSpinBox();
-        drawButton = new QPushButton("绘制局部调光");
+        drawButton = new QPushButton("绘制调光区域");
         drawButton->setCheckable(true);
         drawButton->setChecked(false);
         drawButton->setIcon(QIcon::fromTheme(":/icons8_radar_plot_2.svg"));
-        clearButton = new QPushButton("清除局部调光");
+        clearButton = new QPushButton("清除调光区域");
         hbox1->addWidget(drawButton, 1);
         hbox1->addWidget(clearButton, 1);
 
+        // 绘制局部调光
         connect(drawButton, &QPushButton::clicked, [this, globalIntensitySpinBox]
                 {
+                    FrameRenderer* ref= GlobalResourceManager::getInstance().getRefFrameRenderer();
+
+                    if(ref == nullptr)
+                    {
+                        Log::warn("No reference frame renderer");
+                        return;
+                    }
+
+
                     if (drawButton->isChecked())
                     {
                         // 开始绘制
                         drawButton->setChecked(true);
                         drawButton->setText("完成绘制");
+                        ref->enterDrawMode(true);
                         emit drawMode(true);
                     }
                     else
                     {
-                        // 完成绘制
-                        {
-                            // 产生一个MaskData数据并交给MaskWindow处理
-                            MaskData maskData;
-                            maskData.continuousMode = false;
-                            //maskData.polygons = GlobalResourceManager::getInstance().frameRenderer->getMaskPolygons();
-                            maskData.globalBackgroundIntensity = globalIntensitySpinBox->value() / 255.0f;
-                            GlobalResourceManager::getInstance().maskWindow->onMaskDataChanged(maskData); 
-                        }
+                        // 完成绘制,从参考FrameRenderer中获取Mask数据
+                        MaskData maskData;
+                        maskData.continuousMode = false;
+                        ref->enterDrawMode(false);
+                        maskData.polygons = ref->getMaskPolygons();
+                        maskData.globalBackgroundIntensity = globalIntensitySpinBox->value() / 255.0f;
+                        GlobalResourceManager::getInstance().maskWindow->onMaskDataChanged(maskData); 
+                        
                         drawButton->setChecked(false);
                         drawButton->setText("绘制局部调光");
                         emit drawMode(false);
                     } });
 
+        // 全局调光值
         connect(clearButton, &QPushButton::clicked, [this, globalIntensitySpinBox]
                 { 
                     
@@ -65,6 +76,13 @@ public:
                     maskData.polygons = {};
                     maskData.globalBackgroundIntensity = globalIntensitySpinBox->value() / 255.0f;
                     GlobalResourceManager::getInstance().maskWindow->onMaskDataChanged(maskData);
+
+                    FrameRenderer* ref= GlobalResourceManager::getInstance().getRefFrameRenderer();
+                    if(ref != nullptr)
+                    {
+                        ref->clearMask();
+                    }
+
                     emit clearButtonClicked(); });
 
         vbox->addLayout(hbox1);
@@ -702,6 +720,17 @@ public slots:
 
     void onEnterDrawMode(bool enabled)
     {
+
+        FrameRenderer *ref = GlobalResourceManager::getInstance().getRefFrameRenderer();
+
+        if (ref == nullptr)
+        {
+            Log::warn("No reference frame renderer");
+        }
+        else
+        {
+        }
+
         emit drawMode(enabled);
     }
 

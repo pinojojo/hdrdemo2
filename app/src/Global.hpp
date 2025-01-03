@@ -30,6 +30,16 @@ public:
         return instance;
     }
 
+    void setRefFrameRenderer(FrameRenderer *frameRenderer)
+    {
+        refFrameRenderer = frameRenderer;
+    }
+
+    FrameRenderer *getRefFrameRenderer()
+    {
+        return refFrameRenderer;
+    }
+
     // Global reosurces here
     std::unique_ptr<lzx::ICamera> camera;                        // The camera
     std::unique_ptr<ThreadSafeImage> image;                      // The image buffer (low latency mode)
@@ -43,4 +53,7 @@ public:
 
     GlobalResourceManager(const GlobalResourceManager &&) = delete;
     GlobalResourceManager &operator=(const GlobalResourceManager &&) = delete;
+
+private:
+    FrameRenderer *refFrameRenderer; // Reference frame renderer pointer
 };
