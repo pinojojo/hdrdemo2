@@ -36,6 +36,7 @@ private:
     QPoint m_dragPosition;
     bool m_isDragging;
 
+    QPushButton *m_pinButton;
     GrayMappingWidget *m_mappingWidget;
 };
 

@@ -19,5 +19,6 @@
 		<file>icons8_histogram.svg</file>
 		<file>icons8_lock.svg</file>
 		<file>icons8_unlock.svg</file>
+		<file>icons8_pin.svg</file>
 	</qresource>
 </RCC>

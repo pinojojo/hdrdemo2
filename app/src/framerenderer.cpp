@@ -282,6 +282,7 @@ struct FrameRenderer::Impl
     float lutMin = 0.0f;
     float lutMax = 65535.0f;
     float lutGamma = 1.0f;
+    int lutBitDepth = 16;
     bool needUpdateLut = false;
 
     // 中间层 FBO 相关
@@ -342,9 +343,17 @@ struct FrameRenderer::Impl
 
         for (int i = 0; i < lutSize; ++i)
         {
+            // 归一化
             float x = static_cast<float>(i) / (lutSize - 1);
 
-            x *= 65535; // 16-bit LUT
+            if (lutBitDepth == 16)
+            {
+                x *= 65535.0f;
+            }
+            else if (lutBitDepth == 8)
+            {
+                x *= 255.0f;
+            }
 
             if (x < lutMin)
             {
@@ -933,6 +942,8 @@ void FrameRenderer::wheelEvent(QWheelEvent *event)
 void FrameRenderer::onFrameChangedDirectMode(const unsigned char *data, int width, int height, int channels, int bitDepth)
 {
     bool needAutoFit = false;
+
+    impl->lutBitDepth = bitDepth;
 
     // 重建纹理
     if (!impl->cameraTexture || QSize(impl->cameraTexture->width(), impl->cameraTexture->height()) != QSize(width, height) || m_isFirstUpdate)

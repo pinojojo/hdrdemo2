@@ -24,6 +24,23 @@ GrayMappingWidget::GrayMappingWidget(QWidget *parent)
 
 void GrayMappingWidget::setHistogram(const std::vector<int> &histogram, int maxValue)
 {
+
+    if (maxValue != m_maxValue)
+    {
+        m_maxValue = maxValue;
+
+        minSpinBox->setRange(0, m_maxValue);
+        maxSpinBox->setRange(0, m_maxValue);
+
+        blackLine->start->setCoords(0, 0);
+        blackLine->end->setCoords(0, 255);
+
+        whiteLine->start->setCoords(m_maxValue, 0);
+        whiteLine->end->setCoords(m_maxValue, 255);
+
+        updateLutCurve();
+    }
+
     int histogramPeak = *std::max_element(histogram.begin(), histogram.end());
 
     this->m_histogram.clear();
@@ -43,11 +60,13 @@ void GrayMappingWidget::setupUI()
 {
     auto layout = new QVBoxLayout(this);
 
+    layout->setContentsMargins(0, 0, 0, 0);
+
     // 创建绘图区域
     plotWidget = new QCustomPlot(this);
     plotWidget->setMinimumHeight(150);
 
-    plotWidget->xAxis->setRange(0, 65535);
+    plotWidget->xAxis->setRange(0, m_maxValue);
     plotWidget->yAxis->setRange(0, 255);
     plotWidget->setBackground(QBrush(QColor(31, 33, 39)));
 
@@ -87,8 +106,9 @@ void GrayMappingWidget::setupUI()
         blackLine->start->setCoords(0, 0); // 底部点
         blackLine->end->setCoords(0, 255); // 顶部点
 
-        whiteLine->start->setCoords(65535, 0);
-        whiteLine->end->setCoords(65535, 255);
+        whiteLine->start->setCoords(m_maxValue, 0);
+        whiteLine->end->setCoords(m_maxValue, 255);
+
         blackLine->setSelectable(true);
         whiteLine->setSelectable(true);
     }
@@ -101,14 +121,14 @@ void GrayMappingWidget::setupUI()
 
     // 最小值控制
     minSpinBox = new QDoubleSpinBox(this);
-    minSpinBox->setRange(0, 65535);
+    minSpinBox->setRange(0, m_maxValue);
     minSpinBox->setValue(0);
     minSpinBox->setDecimals(0);
 
     // 最大值控制
     maxSpinBox = new QDoubleSpinBox(this);
-    maxSpinBox->setRange(0, 65535);
-    maxSpinBox->setValue(65535);
+    maxSpinBox->setRange(0, m_maxValue);
+    maxSpinBox->setValue(m_maxValue);
     maxSpinBox->setDecimals(0);
 
     // Gamma值控制
@@ -140,7 +160,7 @@ void GrayMappingWidget::onMousePress(QMouseEvent *event)
 
         // 检查是否点击到了某条线附近
         currentDraggingLine = nullptr;
-        double threshold = 1000; // 大约屏幕上5个像素
+        double threshold = m_maxValue * 0.02;
 
         if (qAbs(x - blackLine->start->key()) < threshold)
         {
@@ -165,7 +185,7 @@ void GrayMappingWidget::onMouseMove(QMouseEvent *event)
     if (currentDraggingLine && event->buttons() & Qt::LeftButton)
     {
         double x = plotWidget->xAxis->pixelToCoord(event->pos().x());
-        x = qBound(0.0, x, 65535.0);
+        x = qBound(0.0, x, (double)m_maxValue);
 
         // 更新线条位置
         currentDraggingLine->start->setCoords(x, 0);
@@ -201,23 +221,6 @@ void GrayMappingWidget::onMouseRelease(QMouseEvent *event)
     }
 }
 
-// 可以添加鼠标悬停效果
-void GrayMappingWidget::onMouseHover(QMouseEvent *event)
-{
-    double x = plotWidget->xAxis->pixelToCoord(event->pos().x());
-    double threshold = 5.0;
-
-    if (qAbs(x - blackLine->start->key()) < threshold ||
-        qAbs(x - whiteLine->start->key()) < threshold)
-    {
-        plotWidget->setCursor(Qt::SizeHorCursor);
-    }
-    else
-    {
-        plotWidget->setCursor(Qt::ArrowCursor);
-    }
-}
-
 void GrayMappingWidget::handleMinValueChanged()
 {
     // 确保在0到max之间
@@ -231,9 +234,8 @@ void GrayMappingWidget::handleMinValueChanged()
 
 void GrayMappingWidget::handleMaxValueChanged()
 {
-    // 确保在min到65535之间
     double val = maxSpinBox->value();
-    maxSpinBox->setValue(qBound(minSpinBox->value() + 1, val, 65535.0));
+    maxSpinBox->setValue(qBound(minSpinBox->value() + 1, val, (double)m_maxValue));
 
     updateLutCurve();
 
@@ -251,7 +253,6 @@ void GrayMappingWidget::updateLutCurve(bool fromDrag)
     if (!fromDrag)
     {
 
-        // 做一些限制 min < max 且 min, max在0-65535之间
         if (minSpinBox->value() > maxSpinBox->value())
         {
             return;
@@ -262,9 +263,9 @@ void GrayMappingWidget::updateLutCurve(bool fromDrag)
             minSpinBox->setValue(0);
         }
 
-        if (maxSpinBox->value() > 65535)
+        if (maxSpinBox->value() > m_maxValue)
         {
-            maxSpinBox->setValue(65535);
+            maxSpinBox->setValue(m_maxValue);
         }
 
         blackLine->start->setCoords(minSpinBox->value(), 0);
@@ -276,8 +277,8 @@ void GrayMappingWidget::updateLutCurve(bool fromDrag)
     double min = minSpinBox->value();
     double max = maxSpinBox->value();
 
-    double minNorm = min / 65535.0;
-    double maxNorm = max / 65535.0;
+    double minNorm = min / m_maxValue;
+    double maxNorm = max / m_maxValue;
 
     double gamma = gammaSpinBox->value();
 
@@ -309,7 +310,7 @@ void GrayMappingWidget::updatePlot()
 {
     plotWidget->clearGraphs();
 
-    // 添加直方图 TODO
+    // 绘制直方图
     {
         auto histGraph = plotWidget->addGraph();
         histGraph->setLineStyle(QCPGraph::lsLine);
@@ -322,7 +323,7 @@ void GrayMappingWidget::updatePlot()
             QVector<double> x(m_histogram.size()), y(m_histogram.size());
             for (int i = 0; i < m_histogram.size(); ++i)
             {
-                x[i] = i / (m_histogram.size() - 1.0) * 65535;
+                x[i] = i / (m_histogram.size() - 1.0) * m_maxValue;
                 y[i] = m_histogram[i];
             }
             histGraph->setData(x, y);
@@ -337,7 +338,7 @@ void GrayMappingWidget::updatePlot()
         QVector<double> x(LUT_SIZE), y(LUT_SIZE);
         for (int i = 0; i < LUT_SIZE; ++i)
         {
-            x[i] = i / (LUT_SIZE - 1.0) * 65535;
+            x[i] = i / (LUT_SIZE - 1.0) * m_maxValue;
             y[i] = m_lutCurve[i];
         }
         lutGraph->setData(x, y);

@@ -19,6 +19,9 @@ signals:
 
 private:
     const int LUT_SIZE = 360;
+
+    int m_maxValue = 255;
+
     // UI elements
     QCustomPlot *plotWidget; // 用于显示曲线
     QDoubleSpinBox *minSpinBox;
@@ -40,7 +43,6 @@ private:
     void onMousePress(QMouseEvent *event);
     void onMouseMove(QMouseEvent *event);
     void onMouseRelease(QMouseEvent *event);
-    void onMouseHover(QMouseEvent *event);
 
 private slots:
     void handleMinValueChanged();

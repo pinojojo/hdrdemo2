@@ -85,7 +85,7 @@ void CameraControllerBar::setupUI()
     m_gainSpinBox->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_gainSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
 
-        // 创建FPS标签
+    // 创建FPS标签
     m_fpsLabel = new QLabel("0 FPS");
     m_fpsLabel->setMinimumWidth(60);
     m_fpsLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -263,11 +263,19 @@ LutPopupWindow::LutPopupWindow(QWidget *parent)
 
     setFocusPolicy(Qt::StrongFocus);
 
-    m_mappingWidget = new GrayMappingWidget(this);
     QVBoxLayout *layout = new QVBoxLayout(this);
+
+    // 创建一个按钮，用于固定窗口一直在最前面
+    m_pinButton = new QPushButton(this);
+    m_pinButton->setIcon(QIcon(":/icons8_pin.svg")); // 确保你有这个图标资源
+    m_pinButton->setFixedSize(16, 16);
+    m_pinButton->setIconSize(QSize(12, 12));
+    m_pinButton->setCheckable(true);
+    layout->addWidget(m_pinButton);
+
+    // LUT 显示控件
+    m_mappingWidget = new GrayMappingWidget(this);
     layout->addWidget(m_mappingWidget);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(0);
     setLayout(layout);
 
     m_dragPosition = QPoint();
@@ -298,7 +306,8 @@ void LutPopupWindow::mouseReleaseEvent(QMouseEvent *event)
 
 void LutPopupWindow::focusOutEvent(QFocusEvent *event)
 {
-    hide();
+    if (!m_pinButton->isChecked())
+        hide();
     QWidget::focusOutEvent(event);
 }
 
@@ -320,6 +329,7 @@ void LutPopupWindow::showEvent(QShowEvent *event)
     QWidget::showEvent(event);
 }
 
+// 事件过滤器，用于点击窗口外部时隐藏窗口
 bool LutPopupWindow::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::MouseButtonPress)
@@ -327,7 +337,10 @@ bool LutPopupWindow::eventFilter(QObject *watched, QEvent *event)
         QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
         if (!this->geometry().contains(mouseEvent->globalPosition().toPoint()))
         {
-            hide();
+            if (!m_pinButton->isChecked())
+            {
+                hide();
+            }
         }
     }
     return QWidget::eventFilter(watched, event);
