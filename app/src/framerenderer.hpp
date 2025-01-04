@@ -86,6 +86,8 @@ public slots:
     void setHistogramBins(int bins) { m_histogramBins = bins; }
     void setHistogramSamplingMode(HistogramSamplingMode mode) { m_histogramSamplingMode = mode; }
 
+    void onLutChanged(double min, double max, double gamma);
+
 private:
     FrameRenderer(const FrameRenderer &) = delete;
     FrameRenderer &operator=(const FrameRenderer &) = delete;

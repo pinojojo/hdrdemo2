@@ -8,7 +8,7 @@ GrayMappingWidget::GrayMappingWidget(QWidget *parent)
 {
     setupUI();
 
-    m_lutCurve.resize(LUT_SIZE);
+    updateLutCurve();
 
     connect(minSpinBox, &QDoubleSpinBox::editingFinished,
             this, &GrayMappingWidget::handleMinValueChanged);
@@ -68,32 +68,33 @@ void GrayMappingWidget::setupUI()
     plotWidget->xAxis->grid()->setPen(QPen(QColor(140, 140, 140, 128), .5, Qt::DashLine));
     plotWidget->yAxis->grid()->setPen(QPen(QColor(140, 140, 140, 128), .5, Qt::DashLine));
 
-    // vertical line
-    blackLine = new QCPItemLine(plotWidget);
-    whiteLine = new QCPItemLine(plotWidget);
+    // 两条线，调整黑白点
+    {
+        blackLine = new QCPItemLine(plotWidget);
+        whiteLine = new QCPItemLine(plotWidget);
 
-    // 设置线条样式
-    QPen linePen(QColor(255, 255, 255, 100)), selectedLinePen(QColor(255, 255, 255, 100));
-    linePen.setWidth(2);
-    selectedLinePen.setWidth(2);
+        // 设置线条样式
+        QPen linePen(QColor(255, 255, 255, 100)), selectedLinePen(QColor(255, 255, 255, 100));
+        linePen.setWidth(2);
+        selectedLinePen.setWidth(2);
 
-    blackLine->setPen(linePen);
-    blackLine->setSelectedPen(selectedLinePen);
-    whiteLine->setPen(linePen);
-    whiteLine->setSelectedPen(selectedLinePen);
+        blackLine->setPen(linePen);
+        blackLine->setSelectedPen(selectedLinePen);
+        whiteLine->setPen(linePen);
+        whiteLine->setSelectedPen(selectedLinePen);
 
-    // 设置初始位置（垂直线，从底部到顶部）
-    blackLine->start->setCoords(0, 0); // 底部点
-    blackLine->end->setCoords(0, 255); // 顶部点
+        // 设置初始位置（垂直线，从底部到顶部）
+        blackLine->start->setCoords(0, 0); // 底部点
+        blackLine->end->setCoords(0, 255); // 顶部点
 
-    whiteLine->start->setCoords(65535, 0);
-    whiteLine->end->setCoords(65535, 255);
+        whiteLine->start->setCoords(65535, 0);
+        whiteLine->end->setCoords(65535, 255);
+        blackLine->setSelectable(true);
+        whiteLine->setSelectable(true);
+    }
 
     // 允许选择和拖动
     plotWidget->setInteractions(QCP::iSelectItems | QCP::iMultiSelect);
-
-    blackLine->setSelectable(true);
-    whiteLine->setSelectable(true);
 
     // 创建控制面板
     auto controlPanel = new QHBoxLayout;

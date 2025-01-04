@@ -19,6 +19,7 @@ public:
 
 signals:
     void visibilityChanged(bool visible);
+    void lutChanged(double min, double max, double gamma);
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -59,6 +60,7 @@ signals:
     void exposureChanged(int value);
     void gainChanged(int value);
     void requestHistogram(bool enable);
+    void lutChanged(double min, double max, double gamma);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

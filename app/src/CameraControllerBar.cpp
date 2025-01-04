@@ -16,6 +16,39 @@ CameraControllerBar::CameraControllerBar(QWidget *parent)
 
 CameraControllerBar::~CameraControllerBar()
 {
+    // 断开所有信号连接
+    disconnect(m_connectButton, nullptr, this, nullptr);
+    disconnect(m_streamButton, nullptr, this, nullptr);
+    disconnect(m_captureButton, nullptr, this, nullptr);
+    disconnect(m_recordingButton, nullptr, this, nullptr);
+    disconnect(m_exposureSpinBox, nullptr, this, nullptr);
+    disconnect(m_gainSpinBox, nullptr, this, nullptr);
+
+    // 确保 LUT 窗口被正确关闭和清理
+    if (m_lutPopupWindow)
+    {
+        disconnect(m_lutPopupWindow, nullptr, this, nullptr);
+        if (m_lutPopupWindow->isVisible())
+        {
+            m_lutPopupWindow->hide();
+        }
+        // 由于设置了 WA_DeleteOnClose，hide() 会触发删除
+        // 但为了安全起见，我们还是显式删除
+        m_lutPopupWindow->deleteLater();
+        m_lutPopupWindow = nullptr;
+    }
+
+    // 清理其他控件
+    // Qt的父子关系会自动处理这些控件的删除，但为了安全起见，设置为nullptr
+    m_connectButton = nullptr;
+    m_streamButton = nullptr;
+    m_captureButton = nullptr;
+    m_recordingButton = nullptr;
+    m_lutButton = nullptr;
+    m_exposureSpinBox = nullptr;
+    m_gainSpinBox = nullptr;
+    m_fpsLabel = nullptr;
+    m_layout = nullptr;
 }
 
 void CameraControllerBar::setupUI()
@@ -52,7 +85,7 @@ void CameraControllerBar::setupUI()
     m_gainSpinBox->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_gainSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
 
-    // 创建FPS标签
+        // 创建FPS标签
     m_fpsLabel = new QLabel("0 FPS");
     m_fpsLabel->setMinimumWidth(60);
     m_fpsLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -139,6 +172,10 @@ void CameraControllerBar::createConnections()
                 m_lutPopupWindow->show();
                 // m_lutPopupWindow->activateWindow();
             });
+
+    // 对 m_lutPopupWindow的 lutChanged 信号进转发
+    connect(m_lutPopupWindow, &LutPopupWindow::lutChanged, this, [this](double min, double max, double gamma)
+            { emit lutChanged(min, max, gamma); });
 }
 
 void CameraControllerBar::onFPSUpdated(double fps)
@@ -221,13 +258,10 @@ LutPopupWindow::LutPopupWindow(QWidget *parent)
     : QWidget(parent), m_isDragging(false)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::ToolTip);
-    // setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_DeleteOnClose);
     setAttribute(Qt::WA_ShowWithoutActivating); // 显示时不激活窗口
 
     setFocusPolicy(Qt::StrongFocus);
-
-    // setMouseTracking(true);
 
     m_mappingWidget = new GrayMappingWidget(this);
     QVBoxLayout *layout = new QVBoxLayout(this);
@@ -239,6 +273,10 @@ LutPopupWindow::LutPopupWindow(QWidget *parent)
     m_dragPosition = QPoint();
 
     qApp->installEventFilter(this);
+
+    // 对 m_mappingWidget的 lutChanged 信号进转发
+    connect(m_mappingWidget, &GrayMappingWidget::lutChanged, this, [this](double min, double max, double gamma)
+            { emit lutChanged(min, max, gamma); });
 }
 
 void LutPopupWindow::updateHistogram(const std::vector<int> &histogram, int maxValue)

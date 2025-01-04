@@ -13,14 +13,16 @@
 #include "MultiWindowManager.h"
 #include "CameraControllerBar.h"
 
+#include "NeonButton.h"
+
 #define USE_QLEMENTINE_STYLE
 
-// #define TEST_MY_WIDGET
+#define TEST_MY_WIDGET
 
 int main(int argc, char *argv[])
 {
 
-     QApplication qApplication(argc, argv);
+    QApplication qApplication(argc, argv);
 
 #ifdef USE_QLEMENTINE_STYLE
     auto *const style = new oclero::qlementine::QlementineStyle(&qApplication);
@@ -47,6 +49,12 @@ int main(int argc, char *argv[])
 
     CameraControllerBar *cameraControllerBar = new CameraControllerBar();
     multi.addWindow(cameraControllerBar);
+
+    NeonButton *neonButton = new NeonButton();
+    neonButton->setText("Neon Button");
+    neonButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    neonButton->startGlowing();
+    multi.addWindow(neonButton);
 
     multi.resize(800, 600);
     multi.show();

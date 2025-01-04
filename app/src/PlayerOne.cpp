@@ -53,6 +53,12 @@ struct PlayerOne::Impl
     {
     }
 
+    // dtor
+    ~Impl()
+    {
+        // TODO
+    }
+
     void grabFunction()
     {
         size_t frameCount = 0;

@@ -31,9 +31,11 @@ static const char *basicVertexShader =
 static const char *basicFragmentShader =
     "#version 330\n"
     "uniform sampler2D tex;\n"
+    "uniform sampler1D lutTex;\n"
     "uniform vec2 canvasSize;\n"
     "uniform vec4 canvasBoundary; // left right bottom top    \n"
     "uniform bool justUseRed;\n"
+    "uniform bool useLut;\n"
     "in vec2 Texcoord;\n"
     "out vec4 outColor;\n"
     "void main()\n"
@@ -41,7 +43,15 @@ static const char *basicFragmentShader =
     "   vec2 canvasCoord = vec2(gl_FragCoord.x/canvasSize.x, gl_FragCoord.y/canvasSize.y);\n"
     "   vec2 textureCoord = vec2(canvasCoord.x*(canvasBoundary.y-canvasBoundary.x) + canvasBoundary.x, canvasCoord.y*(canvasBoundary.w-canvasBoundary.z) + canvasBoundary.z);\n"
     "   vec4 texColor = texture(tex,textureCoord);\n"
-    "   outColor = vec4(texColor.r, texColor.r,texColor.r, 1.0);\n"
+    "   if(useLut)\n"
+    "   {\n"
+    "       texColor = texture(lutTex, texColor.r);\n"
+    "   }\n"
+    "   if(justUseRed)\n"
+    "   {\n"
+    "       texColor = vec4(texColor.r, texColor.r, texColor.r, 1.0);\n"
+    "   }\n"
+    "   outColor = texColor;\n"
     "   //outColor = vec4(canvasCoord,0.0, 1.0);\n"
     "}\n";
 
@@ -265,6 +275,13 @@ struct FrameRenderer::Impl
     QOpenGLBuffer vbo;
     QOpenGLBuffer ebo;
 
+    // LUT相关
+    GLuint lutTexture = 0;
+    float lutMin = 0.0f;
+    float lutMax = 65535.0f;
+    float lutGamma = 1.0f;
+    bool needUpdateLut = false;
+
     // 中间层 FBO 相关
     GLuint intermediateFBO = 0;
     GLuint intermediateTexture = 0;
@@ -315,6 +332,39 @@ struct FrameRenderer::Impl
         owner.glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
+    // 更新LUT纹理
+    void updateLutTexture()
+    {
+        const int lutSize = 4096;
+        std::vector<unsigned char> lutData(lutSize);
+
+        for (int i = 0; i < lutSize; ++i)
+        {
+            float x = static_cast<float>(i) / (lutSize - 1);
+
+            x *= 65535; // 16-bit LUT
+
+            if (x < lutMin)
+            {
+                lutData[i] = 0;
+            }
+            else if (x > lutMax)
+            {
+                lutData[i] = 255;
+            }
+            else
+            {
+                float normalized = (x - lutMin) / (lutMax - lutMin);
+                float gammaCorrected = std::pow(normalized, 1.0f / lutGamma);
+                lutData[i] = static_cast<unsigned char>(gammaCorrected * 255);
+            }
+        }
+
+        owner.glBindTexture(GL_TEXTURE_1D, lutTexture);
+        owner.glTexImage1D(GL_TEXTURE_1D, 0, GL_R8, lutSize, 0, GL_RED, GL_UNSIGNED_BYTE, lutData.data());
+        owner.glBindTexture(GL_TEXTURE_1D, 0);
+    }
+
     // image transform
     render_utility::GLSL_Rect frame; // OpenGL视口在纹理坐标系的位置和大小信息
     float scaleFactor = 1.0f;        // 缩放因子
@@ -346,6 +396,14 @@ struct FrameRenderer::Impl
     void initializeGLResource()
     {
         owner.makeCurrent();
+
+        // 创建和初始化 LUT 纹理
+        owner.glGenTextures(1, &lutTexture);
+        owner.glBindTexture(GL_TEXTURE_1D, lutTexture);
+        owner.glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        owner.glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        owner.glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        updateLutTexture();
 
         // 初始化shader
         shaderProgram = new QOpenGLShaderProgram();
@@ -488,7 +546,32 @@ FrameRenderer::FrameRenderer(QWidget *parent)
 
 FrameRenderer::~FrameRenderer()
 {
+    // Make the OpenGL context current before cleaning up resources
+    makeCurrent();
+
+    // Clean up intermediate FBO resources
+    if (impl->intermediateFBO)
+    {
+        glDeleteFramebuffers(1, &impl->intermediateFBO);
+        impl->intermediateFBO = 0;
+    }
+    if (impl->intermediateTexture)
+    {
+        glDeleteTextures(1, &impl->intermediateTexture);
+        impl->intermediateTexture = 0;
+    }
+
+    // Clean up recording resources
+    m_recorder.reset();
+    m_videoSink.reset();
+    m_captureSession.reset();
+    m_frameInput.reset();
+
+    // Clean up the impl pointer last
     delete impl;
+
+    // Release the context
+    doneCurrent();
 }
 
 std::vector<MaskPolygon> FrameRenderer::getMaskPolygons() const
@@ -519,6 +602,13 @@ void FrameRenderer::paintGL()
     if (!impl->shaderProgram || !impl->cameraTexture || !impl->vao.isCreated())
     {
         return;
+    }
+
+    // 更新LUT
+    if (impl->needUpdateLut)
+    {
+        impl->updateLutTexture();
+        impl->needUpdateLut = false;
     }
 
     // 更新输入cameraTexture
@@ -555,7 +645,7 @@ void FrameRenderer::paintGL()
         }
     }
 
-    // 绘制到中间层FBO
+    // 绘制到中间层FBO, 涉及图片的LUT映射
     if (updateSuccess)
     {
         // 确保FBO存在且完整
@@ -580,6 +670,11 @@ void FrameRenderer::paintGL()
         impl->cameraTexture->bind();
         impl->shaderProgram->setUniformValue("tex", 0);
 
+        // 绑定LUT纹理到纹理单元1
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_1D, impl->lutTexture);
+        impl->shaderProgram->setUniformValue("lutTex", 1);
+
         int canvasSizeWidth = impl->intermediateFBOSize.width();
         int canvasSizeHeight = impl->intermediateFBOSize.height();
 
@@ -589,6 +684,9 @@ void FrameRenderer::paintGL()
                                              1.f,  // right
                                              0.f,  // bottom
                                              1.f); // top
+
+        // 使用Lut
+        impl->shaderProgram->setUniformValue("useLut", true);
 
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
@@ -688,6 +786,9 @@ void FrameRenderer::paintGL()
         int canvasSizeWidth = this->width() * this->devicePixelRatio();
         int canvasSizeHeight = this->height() * this->devicePixelRatio();
         impl->shaderProgram->setUniformValue("canvasSize", canvasSizeWidth, canvasSizeHeight);
+
+        // 禁用LUT
+        impl->shaderProgram->setUniformValue("useLut", false);
 
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         impl->shaderProgram->release();
@@ -1028,6 +1129,16 @@ void FrameRenderer::stopRecording()
     m_isRecording = false;
 
     Log::info(QString("Video saved to: %1").arg(m_recordingFile));
+}
+
+void FrameRenderer::onLutChanged(double min, double max, double gamma)
+{
+    //   Log::info(QString("LUT changed: min %1, max %2, gamma %3").arg(min).arg(max).arg(gamma));
+
+    impl->lutMin = min;
+    impl->lutMax = max;
+    impl->lutGamma = gamma;
+    impl->needUpdateLut = true;
 }
 
 void FrameRenderer::onFrameChanged(const QImage &frame)
