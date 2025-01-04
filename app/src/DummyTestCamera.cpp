@@ -7,10 +7,14 @@
 
 namespace lzx
 {
-    DummyTestCamera::DummyTestCamera()
-        : m_isOpened(false), m_isStreaming(false), m_width(640), m_height(480), m_channels(1), m_bitDepth(16)
+    DummyTestCamera::DummyTestCamera(int bitDepth)
+        : m_isOpened(false),
+          m_isStreaming(false),
+          m_width(640),
+          m_height(480),
+          m_channels(1),
+          m_bitDepth(bitDepth)
     {
-        Log::info("camera ctor");
         generateTestPattern();
     }
 
@@ -81,7 +85,6 @@ namespace lzx
 
         return true;
     }
-
     bool DummyTestCamera::getFrame(unsigned char *buffer, int &width, int &height, int &channels, int &bitDepth)
     {
         if (!m_isOpened || !m_isStreaming || buffer == nullptr)
@@ -100,7 +103,9 @@ namespace lzx
 
         // 创建临时缓冲区
         std::vector<unsigned char> tempBuffer = m_testPattern;
-        auto pattern = reinterpret_cast<uint16_t *>(tempBuffer.data());
+
+        // 根据位深度获取最大值
+        uint16_t maxValue = (1 << m_bitDepth) - 1;
 
         // 在临时缓冲区中绘制动态图案
         static int frameCount = 0;
@@ -110,25 +115,57 @@ namespace lzx
         int centerX = m_width / 2 + static_cast<int>(100 * sin(frameCount * 0.01));
         int centerY = m_height / 2 + static_cast<int>(100 * cos(frameCount * 0.01));
         int radius = 20;
-        uint16_t maxValue = (1 << m_bitDepth) - 1; // 16位最大值 65535
 
-        // 绘制一个实心圆
-        for (int y = -radius; y <= radius; y++)
+        if (m_bitDepth == 8)
         {
-            for (int x = -radius; x <= radius; x++)
-            {
-                if (x * x + y * y <= radius * radius)
-                {
-                    int drawX = centerX + x;
-                    int drawY = centerY + y;
+            // 8位图像处理
+            uint8_t *pattern = reinterpret_cast<uint8_t *>(tempBuffer.data());
 
-                    // 确保绘制位置在图像范围内
-                    if (drawX >= 0 && drawX < m_width && drawY >= 0 && drawY < m_height)
+            // 绘制一个实心圆
+            for (int y = -radius; y <= radius; y++)
+            {
+                for (int x = -radius; x <= radius; x++)
+                {
+                    if (x * x + y * y <= radius * radius)
                     {
-                        // 创建渐变效果
-                        float distance = sqrt(x * x + y * y) / radius;
-                        uint16_t value = static_cast<uint16_t>(maxValue * (1.0f - distance));
-                        pattern[drawX + drawY * m_width] = value * (sin(frameCount * 0.1) + 1.0f) * 0.5f;
+                        int drawX = centerX + x;
+                        int drawY = centerY + y;
+
+                        // 确保绘制位置在图像范围内
+                        if (drawX >= 0 && drawX < m_width && drawY >= 0 && drawY < m_height)
+                        {
+                            // 创建渐变效果
+                            float distance = sqrt(x * x + y * y) / radius;
+                            uint8_t value = static_cast<uint8_t>(maxValue * (1.0f - distance));
+                            pattern[drawX + drawY * m_width] = value * (sin(frameCount * 0.1) + 1.0f) * 0.5f;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            // 16位图像处理
+            uint16_t *pattern = reinterpret_cast<uint16_t *>(tempBuffer.data());
+
+            // 绘制一个实心圆
+            for (int y = -radius; y <= radius; y++)
+            {
+                for (int x = -radius; x <= radius; x++)
+                {
+                    if (x * x + y * y <= radius * radius)
+                    {
+                        int drawX = centerX + x;
+                        int drawY = centerY + y;
+
+                        // 确保绘制位置在图像范围内
+                        if (drawX >= 0 && drawX < m_width && drawY >= 0 && drawY < m_height)
+                        {
+                            // 创建渐变效果
+                            float distance = sqrt(x * x + y * y) / radius;
+                            uint16_t value = static_cast<uint16_t>(maxValue * (1.0f - distance));
+                            pattern[drawX + drawY * m_width] = value * (sin(frameCount * 0.1) + 1.0f) * 0.5f;
+                        }
                     }
                 }
             }
@@ -138,47 +175,87 @@ namespace lzx
         std::memcpy(buffer, tempBuffer.data(), tempBuffer.size());
         return true;
     }
+
     void DummyTestCamera::generateTestPattern()
     {
-        // 为16位图像分配内存 (2字节/像素)
-        m_testPattern.resize(m_width * m_height * sizeof(uint16_t));
-        uint16_t *pattern = reinterpret_cast<uint16_t *>(m_testPattern.data());
+        // 根据位深度分配内存
+        int bytesPerPixel = m_bitDepth / 8;
+        m_testPattern.resize(m_width * m_height * m_channels * bytesPerPixel);
 
-        // 生成16位渐变测试图案
-        const uint16_t maxValue = (1 << m_bitDepth) - 1; // 16位最大值 65535
+        // 根据位深度获取最大值
+        uint16_t maxValue = (1 << m_bitDepth) - 1; // 8位最大值255或16位最大值65535
 
-        for (int y = 0; y < m_height; ++y)
+        if (m_bitDepth == 8)
         {
-            for (int x = 0; x < m_width; ++x)
+            // 8位图像处理
+            uint8_t *pattern = reinterpret_cast<uint8_t *>(m_testPattern.data());
+
+            for (int y = 0; y < m_height; ++y)
             {
-                int index = y * m_width + x;
-
-                // 创建一个水平渐变
-                float gradientX = static_cast<float>(x) / m_width;
-                // 创建一个垂直渐变
-                float gradientY = static_cast<float>(y) / m_height;
-
-                // 组合渐变，创建一个对角线渐变效果
-                float gradient = (gradientX + gradientY) / 2.0f;
-
-                // 将渐变值映射到16位范围
-                pattern[index] = static_cast<uint16_t>(gradient * maxValue);
-
-                // 可以添加一些测试图案，比如中心十字或网格
-                // 在图像中心绘制十字
-                int centerX = m_width / 2;
-                int centerY = m_height / 2;
-                int lineWidth = 2;
-
-                if ((abs(x - centerX) < lineWidth) || (abs(y - centerY) < lineWidth))
+                for (int x = 0; x < m_width; ++x)
                 {
-                    pattern[index] = maxValue; // 白色十字
+                    int index = y * m_width + x;
+
+                    // 创建渐变效果
+                    float gradientX = static_cast<float>(x) / m_width;
+                    float gradientY = static_cast<float>(y) / m_height;
+                    float gradient = (gradientX + gradientY) / 2.0f;
+
+                    // 将渐变值映射到8位范围
+                    pattern[index] = static_cast<uint8_t>(gradient * maxValue);
+
+                    // 在图像中心绘制十字
+                    int centerX = m_width / 2;
+                    int centerY = m_height / 2;
+                    int lineWidth = 2;
+
+                    if ((abs(x - centerX) < lineWidth) || (abs(y - centerY) < lineWidth))
+                    {
+                        pattern[index] = maxValue; // 白色十字
+                    }
+
+                    // 添加网格线
+                    if ((x % 64 == 0) || (y % 64 == 0))
+                    {
+                        pattern[index] = maxValue / 2; // 灰色网格
+                    }
                 }
+            }
+        }
+        else
+        {
+            // 16位图像处理
+            uint16_t *pattern = reinterpret_cast<uint16_t *>(m_testPattern.data());
 
-                // 添加网格线
-                if ((x % 64 == 0) || (y % 64 == 0))
+            for (int y = 0; y < m_height; ++y)
+            {
+                for (int x = 0; x < m_width; ++x)
                 {
-                    pattern[index] = maxValue / 2; // 灰色网格
+                    int index = y * m_width + x;
+
+                    // 创建渐变效果
+                    float gradientX = static_cast<float>(x) / m_width;
+                    float gradientY = static_cast<float>(y) / m_height;
+                    float gradient = (gradientX + gradientY) / 2.0f;
+
+                    // 将渐变值映射到16位范围
+                    pattern[index] = static_cast<uint16_t>(gradient * maxValue);
+
+                    // 在图像中心绘制十字
+                    int centerX = m_width / 2;
+                    int centerY = m_height / 2;
+                    int lineWidth = 2;
+
+                    if ((abs(x - centerX) < lineWidth) || (abs(y - centerY) < lineWidth))
+                    {
+                        pattern[index] = maxValue; // 白色十字
+                    }
+
+                    // 添加网格线
+                    if ((x % 64 == 0) || (y % 64 == 0))
+                    {
+                        pattern[index] = maxValue / 2; // 灰色网格
+                    }
                 }
             }
         }

@@ -256,10 +256,12 @@ void GrayMappingWidget::updateLutCurve(bool fromDrag)
         {
             return;
         }
+
         if (minSpinBox->value() < 0)
         {
             minSpinBox->setValue(0);
         }
+
         if (maxSpinBox->value() > 65535)
         {
             maxSpinBox->setValue(65535);

@@ -12,11 +12,11 @@ namespace lzx
     class DummyTestCamera : public ICamera
     {
     public:
-        DummyTestCamera();
+        DummyTestCamera(int bitDepth = 16);
         virtual ~DummyTestCamera();
 
         // 实现ICamera的虚函数
-        virtual std::string label() override { return "DummyTest Camera"; }
+        virtual std::string label() override { return "DummyTest"; }
         virtual bool open() override;
         virtual bool close() override;
         virtual bool start() override;

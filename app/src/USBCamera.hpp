@@ -25,6 +25,10 @@ public:
     bool start() override;
     bool stop() override;
     bool snap() override;
+
+    virtual bool streaming() override;
+    virtual bool getFrame(unsigned char *buffer, int &width, int &height, int &channels, int &bitDepth) override;
+
     bool set(const std::string &name, double value) override;
     bool set(const std::string &name, int value) override;
     bool set(const std::string &name, bool value) override;
@@ -37,6 +41,8 @@ public:
 private:
     struct Impl;
     std::unique_ptr<Impl> impl;
+
+    size_t m_lastGotFrameCount = 0;
 };
 
 #endif

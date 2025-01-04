@@ -13,6 +13,7 @@
 #include <string>
 #include <QScrollBar>
 #include <QPushButton>
+#include <QString>
 
 enum LogType
 {

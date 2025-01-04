@@ -3,29 +3,40 @@
 
 #include "DummyTestCamera.h"
 #include "PlayerOne.hpp"
+#include "USBCamera.hpp"
+
 #include "Settings.hpp"
 
 #include "logwidget.hpp"
 
-CameraViewPanel::CameraViewPanel(QString desc, QWidget *parent)
+CameraViewPanel::CameraViewPanel(QString desc, QWidget *parent, bool isReference)
     : QWidget(parent),
       m_desc(desc),
       m_layout(nullptr),
       m_frameRenderer(nullptr),
       m_controlBar(nullptr),
       m_camera(nullptr),
-      m_isStreaming(false)
+      m_isStreaming(false),
+      m_isReference(isReference)
 {
     setupUI();
     createConnections();
 
-    if (m_desc == "test")
+    if (m_desc == "test8")
     {
-        m_camera = new lzx::DummyTestCamera();
+        m_camera = new lzx::DummyTestCamera(8);
+    }
+    else if (m_desc == "test16")
+    {
+        m_camera = new lzx::DummyTestCamera(16);
     }
     else if (m_desc == "PlayerOne")
     {
         m_camera = new PlayerOne();
+    }
+    else if (m_desc == "MVS")
+    {
+        m_camera = new USBCamera("Hikvision");
     }
 
     // 设置状态回调
@@ -146,7 +157,7 @@ void CameraViewPanel::setupUI()
     m_layout->setSpacing(0);
 
     // 创建渲染器
-    m_frameRenderer = new FrameRenderer(this);
+    m_frameRenderer = new FrameRenderer(this, m_isReference);
     m_layout->addWidget(m_frameRenderer, 1); // 1表示拉伸比例
 
     // 创建控制栏

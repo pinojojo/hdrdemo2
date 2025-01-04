@@ -15,7 +15,7 @@ class CameraViewPanel : public QWidget
     Q_OBJECT
 
 public:
-    explicit CameraViewPanel(QString desc, QWidget *parent = nullptr);
+    explicit CameraViewPanel(QString desc, QWidget *parent = nullptr, bool isReference = false);
     ~CameraViewPanel();
 
     void setCamera(lzx::ICamera *camera);
@@ -40,4 +40,5 @@ private:
     CameraControllerBar *m_controlBar;
     lzx::ICamera *m_camera;
     bool m_isStreaming;
+    bool m_isReference;
 };
