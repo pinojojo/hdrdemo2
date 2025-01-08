@@ -66,8 +66,9 @@ MainWindow::MainWindow(QWidget *parent)
     splitter->addWidget(rightPanel);
 
     multiWindowManager = new MultiWindowManager(rightPanel);
-    multiWindowManager->addWindow(new CameraViewPanel("test8", rightPanel, true));
-    multiWindowManager->addWindow(new CameraViewPanel("test16", rightPanel));
+    multiWindowManager->addWindow(new CameraViewPanel("MVS", rightPanel, true));
+    // multiWindowManager->addWindow(new CameraViewPanel("test16", rightPanel));
+    multiWindowManager->addWindow(new CameraViewPanel("PlayerOne", rightPanel));
 
     // 创建一个垂直的 QSplitter，并添加 FrameRenderer 和 LogWidget
     QSplitter *rightSplitter = new QSplitter(Qt::Vertical, rightPanel);

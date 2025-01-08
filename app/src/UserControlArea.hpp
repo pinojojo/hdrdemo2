@@ -410,7 +410,7 @@ public:
             // 新行： "强度" + double spinbox(0~1) 等分
             {
                 QHBoxLayout *hbox1 = new QHBoxLayout();
-                QLabel *label1 = new QLabel("强度");
+                QLabel *label1 = new QLabel("强度系数");
                 intensitySpinBox->setRange(0.0, 1.0);
                 intensitySpinBox->setValue(1.0);
                 intensitySpinBox->setSingleStep(0.1);
@@ -426,6 +426,29 @@ public:
                             transferFunction.max = clipMaxSpinBox->value() / 255.0f;
                             transferFunction.gamma = gammaSpinBox->value();
                             transferFunction.intensity = intensitySpinBox->value();
+                            GlobalResourceManager::getInstance().maskWindow->onTransferFunctionChanged(transferFunction); });
+            }
+
+            // 新行："强度偏移" int型，从-100到+100，步进为1，原始为0
+            {
+                QHBoxLayout *hbox1 = new QHBoxLayout();
+                QLabel *label1 = new QLabel("强度偏移");
+                QSpinBox *intensityOffsetSpinBox = new QSpinBox();
+                intensityOffsetSpinBox->setRange(-100, 100);
+                intensityOffsetSpinBox->setValue(0);
+                hbox1->addWidget(label1, 1);
+                hbox1->addWidget(intensityOffsetSpinBox, 1);
+                autoModeLayout->addLayout(hbox1);
+
+                // 行为：当强度偏移改变时，组合一个TransferFunction并交给maskWindow处理
+                connect(intensityOffsetSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), [this, clipMinSpinBox, clipMaxSpinBox, gammaSpinBox, intensitySpinBox, intensityOffsetSpinBox]
+                        {
+                            TransferFunction transferFunction;
+                            transferFunction.min = clipMinSpinBox->value() / 255.0f;
+                            transferFunction.max = clipMaxSpinBox->value() / 255.0f;
+                            transferFunction.gamma = gammaSpinBox->value();
+                            transferFunction.intensity = intensitySpinBox->value();
+                            transferFunction.offset = (float)intensityOffsetSpinBox->value() / 255;
                             GlobalResourceManager::getInstance().maskWindow->onTransferFunctionChanged(transferFunction); });
             }
         }

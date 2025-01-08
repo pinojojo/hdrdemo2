@@ -42,6 +42,7 @@ struct TransferFunction
     float max = 1.0f;
     float gamma = 1.0f;
     float intensity = 1.0f;
+    float offset = 0.0f;
 };
 
 // 针对 TransferFunction 重载 等号操作符
@@ -56,5 +57,6 @@ inline bool operator==(const TransferFunction &lhs, const TransferFunction &rhs)
     return floatEqual(lhs.min, rhs.min) &&
            floatEqual(lhs.max, rhs.max) &&
            floatEqual(lhs.gamma, rhs.gamma) &&
-           floatEqual(lhs.intensity, rhs.intensity);
+           floatEqual(lhs.intensity, rhs.intensity) &&
+           floatEqual(lhs.offset, rhs.offset);
 }

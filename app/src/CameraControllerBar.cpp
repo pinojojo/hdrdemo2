@@ -70,8 +70,8 @@ void CameraControllerBar::setupUI()
 
     m_exposureSpinBox = new QSpinBox(this);
     m_exposureSpinBox->setPrefix("Exp: ");
-    m_exposureSpinBox->setRange(0, 1000000);
-    m_exposureSpinBox->setSingleStep(2000);
+    m_exposureSpinBox->setRange(1, 1000000);
+    m_exposureSpinBox->setSingleStep(100);
     m_exposureSpinBox->setSuffix(" μs");
     m_exposureSpinBox->setFixedWidth(120);
     m_exposureSpinBox->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -223,13 +223,17 @@ void CameraControllerBar::onCameraStatusChanged(QString status, QString value)
 
     if (status == "exposure")
     {
+        m_exposureSpinBox->blockSignals(true);
         m_exposureSpinBox->setValue(value.toInt());
+        m_exposureSpinBox->blockSignals(false);
     }
 
     // gain
     if (status == "gain")
     {
+        m_gainSpinBox->blockSignals(true);
         m_gainSpinBox->setValue(value.toInt());
+        m_gainSpinBox->blockSignals(false);
     }
 }
 

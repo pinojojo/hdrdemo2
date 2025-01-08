@@ -120,6 +120,8 @@ private:
     qint64 m_lastFpsUpdate = 0;
     static constexpr int FPS_UPDATE_INTERVAL = 1000; // 每秒更新一次FPS
 
+    bool m_flipY = false; // 控制Y方向是否反转
+
     struct Impl;
     Impl *impl;
 

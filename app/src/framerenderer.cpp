@@ -38,12 +38,17 @@ static const char *basicFragmentShader =
     "uniform vec4 canvasBoundary; // left right bottom top    \n"
     "uniform bool justUseRed;\n"
     "uniform bool useLut;\n"
+    "uniform bool flipY;\n"
     "in vec2 Texcoord;\n"
     "out vec4 outColor;\n"
     "void main()\n"
     "{\n"
     "   vec2 canvasCoord = vec2(gl_FragCoord.x/canvasSize.x, gl_FragCoord.y/canvasSize.y);\n"
     "   vec2 textureCoord = vec2(canvasCoord.x*(canvasBoundary.y-canvasBoundary.x) + canvasBoundary.x, canvasCoord.y*(canvasBoundary.w-canvasBoundary.z) + canvasBoundary.z);\n"
+    "  if (flipY)\n"
+    "   {\n"
+    "       textureCoord.y = 1.0 - textureCoord.y;\n"
+    "   }\n"
     "   vec4 texColor = texture(tex,textureCoord);\n"
     "   if(useLut)\n"
     "   {\n"
@@ -702,6 +707,8 @@ void FrameRenderer::paintGL()
                                              0.f,  // bottom
                                              1.f); // top
 
+        impl->shaderProgram->setUniformValue("flipY", m_flipY);
+
         // 使用Lut
         impl->shaderProgram->setUniformValue("useLut", true);
 
@@ -806,6 +813,7 @@ void FrameRenderer::paintGL()
 
         // 禁用LUT
         impl->shaderProgram->setUniformValue("useLut", false);
+        impl->shaderProgram->setUniformValue("flipY", false);
 
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         impl->shaderProgram->release();
@@ -1426,6 +1434,16 @@ void FrameRenderer::contextMenuEvent(QContextMenuEvent *event)
     QAction *autoFitAction = new QAction("自适应大小", this);
     connect(autoFitAction, &QAction::triggered, this, &FrameRenderer::onAutoFit);
     contextMenu.addAction(autoFitAction);
+
+    // 添加翻转控制选项
+    QAction *flipYAction = new QAction("Y方向翻转", this);
+    flipYAction->setCheckable(true);
+    flipYAction->setChecked(m_flipY);
+    connect(flipYAction, &QAction::triggered, this, [this](bool checked)
+            {
+        m_flipY = checked;
+        update(); });
+    contextMenu.addAction(flipYAction);
 
     contextMenu.exec(event->globalPos());
 }

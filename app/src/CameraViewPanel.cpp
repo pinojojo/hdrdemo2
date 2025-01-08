@@ -147,6 +147,7 @@ void CameraViewPanel::onExposureChanged(int value)
 
 void CameraViewPanel::onGainChanged(int value)
 {
+    Log::info(QString("Gain changed: %1").arg(value));
     m_camera->set("gain", value);
 }
 
