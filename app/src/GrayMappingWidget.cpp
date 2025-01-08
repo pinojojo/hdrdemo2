@@ -2,6 +2,8 @@
 
 #include <QDebug>
 
+#include "logwidget.hpp"
+
 // GrayMappingWidget.cpp
 GrayMappingWidget::GrayMappingWidget(QWidget *parent)
     : QWidget(parent)
@@ -29,8 +31,15 @@ void GrayMappingWidget::setHistogram(const std::vector<int> &histogram, int maxV
     {
         m_maxValue = maxValue;
 
+        Log::info(QString("maxValue: %1").arg(maxValue));
+
+        plotWidget->xAxis->setRange(0, m_maxValue);
+
         minSpinBox->setRange(0, m_maxValue);
         maxSpinBox->setRange(0, m_maxValue);
+
+        minSpinBox->setValue(0);
+        maxSpinBox->setValue(m_maxValue);
 
         blackLine->start->setCoords(0, 0);
         blackLine->end->setCoords(0, 255);

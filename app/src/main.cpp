@@ -17,7 +17,7 @@
 
 #define USE_QLEMENTINE_STYLE
 
-#define TEST_MY_WIDGET
+// #define TEST_MY_WIDGET
 
 int main(int argc, char *argv[])
 {
