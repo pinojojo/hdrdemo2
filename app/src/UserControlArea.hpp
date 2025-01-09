@@ -165,8 +165,8 @@ public:
             QHBoxLayout *hbox = new QHBoxLayout();
             QPushButton *moveTo1920Button = new QPushButton("置于1920");
             QPushButton *moveTo0Button = new QPushButton("置于0");
-            hbox->addWidget(moveTo1920Button, 1);
             hbox->addWidget(moveTo0Button, 1);
+            hbox->addWidget(moveTo1920Button, 1);
             vbox->addLayout(hbox);
 
             connect(moveTo1920Button, &QPushButton::clicked, [this]

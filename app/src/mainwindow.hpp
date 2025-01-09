@@ -32,9 +32,11 @@ public:
 
 private slots:
     void toggleDeviceFinder();
-    void toggleMaskWindow();
+
     void openSettings();
     void openGLSLEditor();
+
+    void openSaveFolder();
 
 private:
     QSplitter *splitter;
@@ -44,10 +46,11 @@ private:
     QWidget *rightPanel;
     QVBoxLayout *rightLayout;
     QAction *deviceFinderAction;
+    QAction *openSaveFolderAction;
     DeviceFinderDialog *deviceFinderDialog;
     LogWidget *logWidget;
     QAction *logWidgetAction;
-    QAction *maskWindowToggleAction;
+
     UserControlArea *userControlArea;
     QAction *settingsAction;
     QAction *glslEditorAction;

@@ -9,11 +9,13 @@
 #include "Global.hpp"
 #include "CameraViewPanel.h"
 
+#include "Settings.hpp"
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       deviceFinderDialog(new DeviceFinderDialog(this)),
       deviceFinderAction(new QAction(tr("查询相机"), this)),
-      maskWindowToggleAction(new QAction(tr("打开Mask窗口"), this)),
+
       logWidget(new LogWidget(this)),
       userControlArea(new UserControlArea(this))
 {
@@ -23,14 +25,18 @@ MainWindow::MainWindow(QWidget *parent)
     // 添加action到菜单
     QMenu *menu = menuBar()->addMenu(tr("工具"));
     menu->addAction(deviceFinderAction);
-    maskWindowToggleAction->setCheckable(true);
-    menu->addAction(maskWindowToggleAction);
 
     // 全局设置菜单
     settingsAction = new QAction(tr("系统设置"), this);
     settingsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma)); // Ctrl+,
     settingsAction->setShortcutContext(Qt::ApplicationShortcut);
     settingsAction->setStatusTip(tr("打开系统设置"));
+
+    openSaveFolderAction = new QAction(tr("打开保存文件夹"), this);
+    openSaveFolderAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_O)); // Ctrl+Shift+O
+    openSaveFolderAction->setStatusTip(tr("打开默认保存文件夹"));
+    menu->addAction(openSaveFolderAction);
+    connect(openSaveFolderAction, &QAction::triggered, this, &MainWindow::openSaveFolder);
 
     // GLSL编辑器菜单
     glslEditorAction = new QAction(tr("GLSL编辑器"), this);
@@ -45,7 +51,6 @@ MainWindow::MainWindow(QWidget *parent)
     // 连接action的触发信号到槽函数
     connect(deviceFinderAction, &QAction::triggered, this, &MainWindow::toggleDeviceFinder);
     deviceFinderDialog->hide(); // Initially hidden
-    connect(maskWindowToggleAction, &QAction::triggered, this, &MainWindow::toggleMaskWindow);
 
     // 创建 Splitter
     splitter = new QSplitter(this);
@@ -66,9 +71,18 @@ MainWindow::MainWindow(QWidget *parent)
     splitter->addWidget(rightPanel);
 
     multiWindowManager = new MultiWindowManager(rightPanel);
-    multiWindowManager->addWindow(new CameraViewPanel("MVS", rightPanel, true));
-    // multiWindowManager->addWindow(new CameraViewPanel("test16", rightPanel));
-    multiWindowManager->addWindow(new CameraViewPanel("PlayerOne", rightPanel));
+
+    if (0)
+    {
+
+        multiWindowManager->addWindow(new CameraViewPanel("MVS", rightPanel, true));
+        multiWindowManager->addWindow(new CameraViewPanel("PlayerOne", rightPanel));
+    }
+    else
+    {
+        multiWindowManager->addWindow(new CameraViewPanel("test8", rightPanel));
+        multiWindowManager->addWindow(new CameraViewPanel("test16", rightPanel));
+    }
 
     // 创建一个垂直的 QSplitter，并添加 FrameRenderer 和 LogWidget
     QSplitter *rightSplitter = new QSplitter(Qt::Vertical, rightPanel);
@@ -87,6 +101,11 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(splitter);
 }
 
+void MainWindow::openSaveFolder()
+{
+    QString path = Settings::getInstance().getDefaultSavePath();
+    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+}
 void MainWindow::closeEvent(QCloseEvent *event)
 {
 
@@ -100,18 +119,6 @@ void MainWindow::closeEvent(QCloseEvent *event)
     if (GlobalResourceManager::getInstance().camera != nullptr)
     {
         GlobalResourceManager::getInstance().camera->stop();
-    }
-}
-
-void MainWindow::toggleMaskWindow()
-{
-    if (maskWindowToggleAction->isChecked())
-    {
-        GlobalResourceManager::getInstance().maskWindow->show();
-    }
-    else
-    {
-        GlobalResourceManager::getInstance().maskWindow->hide();
     }
 }
 
