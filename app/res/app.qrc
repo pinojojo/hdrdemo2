@@ -1,7 +1,7 @@
 <RCC>
 	<qresource>
-		<file>darkblue.json</file>
-		<file>dark.json</file>
+		<file>themes/dark.json</file>
+		<file>themes/light.json</file>
 		<file>placeholder.png</file>
 		<file>gray.png</file>
 		<file>icons8_radar_plot_2.svg</file>

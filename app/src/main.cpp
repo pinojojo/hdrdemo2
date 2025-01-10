@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     auto *const style = new oclero::qlementine::QlementineStyle(&qApplication);
     style->setAnimationsEnabled(true);
 
-    style->setThemeJsonPath(QStringLiteral(":/dark.json"));
+    style->setThemeJsonPath(QStringLiteral(":/themes/dark.json"));
     QApplication::setWindowIcon(QIcon(QStringLiteral(":/icons8_view_module.ico")));
     qApplication.setStyle(style);
 #endif
