@@ -16,6 +16,8 @@
 
 #include "Global.hpp"
 
+#include "Settings.hpp"
+
 #include "logwidget.hpp"
 #include "polygonrenderer.hpp"
 
@@ -544,7 +546,7 @@ struct FrameRenderer::Impl
 };
 
 FrameRenderer::FrameRenderer(QWidget *parent, bool isReference)
-    : QOpenGLWidget(parent), impl(new Impl(*this))
+    : QOpenGLWidget(parent), impl(new Impl(*this)) , m_isReference(isReference)
 {
     setMouseTracking(true);
 
@@ -568,6 +570,14 @@ FrameRenderer::FrameRenderer(QWidget *parent, bool isReference)
     {
         Log::info("Reference frame renderer created");
         GlobalResourceManager::getInstance().setRefFrameRenderer(this);
+
+        m_flipX = Settings::getInstance().isReferenceFlipX();
+        m_flipY = Settings::getInstance().isReferenceFlipY();
+    }
+    else
+    {
+        m_flipX = Settings::getInstance().isFlipX();
+        m_flipY = Settings::getInstance().isFlipY();
     }
 }
 
@@ -1451,8 +1461,19 @@ void FrameRenderer::contextMenuEvent(QContextMenuEvent *event)
     flipYAction->setChecked(m_flipY);
     connect(flipYAction, &QAction::triggered, this, [this](bool checked)
             {
-        m_flipY = checked;
-        update(); });
+                m_flipY = checked;
+                if (m_isReference)
+                {
+                    Settings::getInstance().setReferenceFlipY(checked);
+                }
+                else
+                {
+                    Settings::getInstance().setFlipY(checked);
+                }
+
+                update();
+            });
+
     contextMenu.addAction(flipYAction);
 
     // 添加X方向翻转控制选项
@@ -1461,8 +1482,17 @@ void FrameRenderer::contextMenuEvent(QContextMenuEvent *event)
     flipXAction->setChecked(m_flipX);
     connect(flipXAction, &QAction::triggered, this, [this](bool checked)
             {
-        m_flipX = checked;
-        update(); });
+                m_flipX = checked;
+                if (m_isReference)
+                {
+                    Settings::getInstance().setReferenceFlipX(checked);
+                }
+                else
+                {
+                    Settings::getInstance().setFlipX(checked);
+                }
+                update();
+            });
     contextMenu.addAction(flipXAction);
 
     contextMenu.exec(event->globalPos());

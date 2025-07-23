@@ -72,7 +72,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     multiWindowManager = new MultiWindowManager(rightPanel);
 
-    if (1)
+    if (0)
     {
 
         multiWindowManager->addWindow(new CameraViewPanel("MVS", rightPanel, true));
@@ -80,7 +80,7 @@ MainWindow::MainWindow(QWidget *parent)
     }
     else
     {
-        multiWindowManager->addWindow(new CameraViewPanel("test8", rightPanel));
+        multiWindowManager->addWindow(new CameraViewPanel("test8", rightPanel, true));
         multiWindowManager->addWindow(new CameraViewPanel("test16", rightPanel));
     }
 

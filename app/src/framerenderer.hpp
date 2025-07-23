@@ -94,6 +94,8 @@ private:
     FrameRenderer(const FrameRenderer &) = delete;
     FrameRenderer &operator=(const FrameRenderer &) = delete;
 
+    bool m_isReference = false; // 是否是参考窗口
+
     bool m_isFirstUpdate = true;
 
     // 拍照
