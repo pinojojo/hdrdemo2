@@ -1455,26 +1455,7 @@ void FrameRenderer::contextMenuEvent(QContextMenuEvent *event)
     connect(autoFitAction, &QAction::triggered, this, &FrameRenderer::onAutoFit);
     contextMenu.addAction(autoFitAction);
 
-    // 添加翻转控制选项
-    QAction *flipYAction = new QAction("Y方向翻转", this);
-    flipYAction->setCheckable(true);
-    flipYAction->setChecked(m_flipY);
-    connect(flipYAction, &QAction::triggered, this, [this](bool checked)
-            {
-                m_flipY = checked;
-                if (m_isReference)
-                {
-                    Settings::getInstance().setReferenceFlipY(checked);
-                }
-                else
-                {
-                    Settings::getInstance().setFlipY(checked);
-                }
-
-                update();
-            });
-
-    contextMenu.addAction(flipYAction);
+  
 
     // 添加X方向翻转控制选项
     QAction *flipXAction = new QAction("X方向翻转", this);
@@ -1494,6 +1475,27 @@ void FrameRenderer::contextMenuEvent(QContextMenuEvent *event)
                 update();
             });
     contextMenu.addAction(flipXAction);
+
+      // 添加翻转控制选项
+    QAction *flipYAction = new QAction("Y方向翻转", this);
+    flipYAction->setCheckable(true);
+    flipYAction->setChecked(m_flipY);
+    connect(flipYAction, &QAction::triggered, this, [this](bool checked)
+            {
+                m_flipY = checked;
+                if (m_isReference)
+                {
+                    Settings::getInstance().setReferenceFlipY(checked);
+                }
+                else
+                {
+                    Settings::getInstance().setFlipY(checked);
+                }
+
+                update();
+            });
+
+    contextMenu.addAction(flipYAction);
 
     contextMenu.exec(event->globalPos());
 }
