@@ -774,9 +774,9 @@ void FrameRenderer::paintGL()
                     memcpy(videoFrame.bits(0), flipped_data.data(), flipped_data.size());
 
                     // 设置准确的时间戳
-                    qint64 presentationTime = currentTime - m_recordingStartTime;
+                    qint64 presentationTime = m_recordingFrameCount * FRAME_INTERVAL; // ms
                     videoFrame.setStartTime(presentationTime * 1000); // 转换为微秒
-                    videoFrame.setEndTime((presentationTime + FRAME_INTERVAL) * 1000);
+                    // videoFrame.setEndTime((presentationTime + FRAME_INTERVAL) * 1000);
 
                     videoFrame.unmap();
 
@@ -789,6 +789,8 @@ void FrameRenderer::paintGL()
                 }
 
                 m_lastFrameTime = currentTime;
+
+                m_recordingFrameCount++;
             }
         }
     }
@@ -1106,6 +1108,7 @@ void FrameRenderer::startRecording(QString filename)
         return;
 
     m_recordingFile = filename;
+    m_recordingFrameCount = 0;
 
     m_recordingStartTime = QDateTime::currentMSecsSinceEpoch();
     m_lastFrameTime = m_recordingStartTime;

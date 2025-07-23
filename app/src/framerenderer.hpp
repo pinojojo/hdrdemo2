@@ -88,6 +88,8 @@ public slots:
 
     void onLutChanged(double min, double max, double gamma);
 
+
+
 private:
     FrameRenderer(const FrameRenderer &) = delete;
     FrameRenderer &operator=(const FrameRenderer &) = delete;
@@ -108,6 +110,8 @@ private:
     qint64 m_recordingStartTime = 0;
     qint64 m_lastFrameTime = 0;
     const qint64 FRAME_INTERVAL = 20; // 50fps = 20ms per framebool
+    qint64 m_recordingFrameCount = 0; // 记录录制的帧数
+
 
     // 直方图
     bool m_histogramEnabled = false;
