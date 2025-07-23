@@ -128,7 +128,7 @@ void CameraViewPanel::onRecordClicked(bool record)
     if (record)
     {
         QString filename = m_camera->label().c_str();
-        filename += "-" + QDateTime::currentDateTime().toString("yyyy-MM-dd_hh-mm-ss") + ".avi";
+        filename += "-" + QDateTime::currentDateTime().toString("yyyy-MM-dd_hh-mm-ss") + ".mp4";
 
         filename = Settings::getInstance().getDefaultSavePath() + "/" + filename;
 

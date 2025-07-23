@@ -1141,7 +1141,7 @@ void FrameRenderer::startRecording(QString filename)
 
     // 配置媒体格式
     QMediaFormat format;
-    format.setFileFormat(QMediaFormat::FileFormat::AVI);
+    format.setFileFormat(QMediaFormat::FileFormat::MPEG4);
     format.setVideoCodec(QMediaFormat::VideoCodec::H264);
     m_recorder->setMediaFormat(format);
 
