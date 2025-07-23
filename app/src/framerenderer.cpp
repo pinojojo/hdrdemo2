@@ -39,15 +39,20 @@ static const char *basicFragmentShader =
     "uniform bool justUseRed;\n"
     "uniform bool useLut;\n"
     "uniform bool flipY;\n"
+    "uniform bool flipX;\n"
     "in vec2 Texcoord;\n"
     "out vec4 outColor;\n"
     "void main()\n"
     "{\n"
     "   vec2 canvasCoord = vec2(gl_FragCoord.x/canvasSize.x, gl_FragCoord.y/canvasSize.y);\n"
     "   vec2 textureCoord = vec2(canvasCoord.x*(canvasBoundary.y-canvasBoundary.x) + canvasBoundary.x, canvasCoord.y*(canvasBoundary.w-canvasBoundary.z) + canvasBoundary.z);\n"
-    "  if (flipY)\n"
+    "   if (flipY)\n"
     "   {\n"
     "       textureCoord.y = 1.0 - textureCoord.y;\n"
+    "   }\n"
+    "   if (flipX)\n"
+    "   {\n"
+    "       textureCoord.x = 1.0 - textureCoord.x;\n"
     "   }\n"
     "   vec4 texColor = texture(tex,textureCoord);\n"
     "   if(useLut)\n"
@@ -708,6 +713,7 @@ void FrameRenderer::paintGL()
                                              1.f); // top
 
         impl->shaderProgram->setUniformValue("flipY", m_flipY);
+        impl->shaderProgram->setUniformValue("flipX", m_flipX);
 
         // 使用Lut
         impl->shaderProgram->setUniformValue("useLut", true);
@@ -814,6 +820,7 @@ void FrameRenderer::paintGL()
         // 禁用LUT
         impl->shaderProgram->setUniformValue("useLut", false);
         impl->shaderProgram->setUniformValue("flipY", false);
+        impl->shaderProgram->setUniformValue("flipX", false);
 
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         impl->shaderProgram->release();
@@ -1444,6 +1451,16 @@ void FrameRenderer::contextMenuEvent(QContextMenuEvent *event)
         m_flipY = checked;
         update(); });
     contextMenu.addAction(flipYAction);
+
+    // 添加X方向翻转控制选项
+    QAction *flipXAction = new QAction("X方向翻转", this);
+    flipXAction->setCheckable(true);
+    flipXAction->setChecked(m_flipX);
+    connect(flipXAction, &QAction::triggered, this, [this](bool checked)
+            {
+        m_flipX = checked;
+        update(); });
+    contextMenu.addAction(flipXAction);
 
     contextMenu.exec(event->globalPos());
 }

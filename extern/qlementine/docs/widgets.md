@@ -1,8 +1,14 @@
-## Widgets
+# Widgets
 
 Qlementine provides a collection of `QWidgets` to extend Qt's standard ones.
 
 More information about them coming soon. You can check them in the Sandbox application, at the moment.
+
+## AboutDialog
+
+A standard "About" window that you can use to quickly display basic information about your app.
+
+![AboutDialog](assets/images/widgets/aboutdialog.png)
 
 ## AbstractItemListWidget
 
@@ -52,6 +58,12 @@ Improves `QLineEdit` by allowing statuses to display feedback for user (valid, e
 
 ![LineEdit](assets/images/widgets/lineedit.png)
 
+## LoadingSpinner
+
+A small widget that you can use to show that an asynchronous operation is currently running.
+
+![LoadingSpinner](assets/images/widgets/loadingspinner.png)
+
 ## Menu
 
 Improves `QMenu` by adding predicates (lambda functions) to update state.
@@ -61,6 +73,20 @@ Improves `QMenu` by adding predicates (lambda functions) to update state.
 A widget that allows to switch between a range of elements, such as seen on Android.
 
 ![NavigationBar](assets/images/widgets/navigationbar.png)
+
+## NotificationBadge
+
+A small badge to display a notification (with or without text) on another widget.
+
+```cpp
+// The parent set to the constructor is not important.
+auto* badge = new NotificationBadge(someParent);
+
+// The badge's parent will change to theWidget's parent.
+badge->setWidget(theWidget);
+```
+
+![NotificationBadge](assets/images/widgets/notificationbadge.png)
 
 ## Popover
 

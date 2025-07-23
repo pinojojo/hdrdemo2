@@ -17,6 +17,7 @@
 #include <oclero/qlementine/widgets/StatusBadgeWidget.hpp>
 #include <oclero/qlementine/widgets/ColorButton.hpp>
 #include <oclero/qlementine/widgets/IconWidget.hpp>
+#include <oclero/qlementine/widgets/AboutDialog.hpp>
 
 #include <oclero/qlementine/icons/Icons12.hpp>
 #include <oclero/qlementine/icons/Icons16.hpp>
@@ -51,6 +52,8 @@
 #include <QButtonGroup>
 #include <QProgressBar>
 #include <QActionGroup>
+#include <QApplication>
+#include <QPlainTextEdit>
 
 #include <random>
 
@@ -186,7 +189,9 @@ struct ShowcaseWindow::Impl {
 
   void setupMenuBar() {
     menuBar = new QMenuBar(nullptr);
-    const auto cb = []() {};
+    const auto cb = []() {
+      // Just for the example.
+    };
 
     {
       auto* menu = menuBar->addMenu("File");
@@ -288,7 +293,21 @@ struct ShowcaseWindow::Impl {
       auto* menu = menuBar->addMenu("Help");
       {
         menu->addAction(makeThemedIcon(Icons16::Misc_Mail), "Contact", QKeySequence{}, cb);
-        menu->addAction(makeThemedIcon(Icons16::Misc_Info), "About...", QKeySequence{}, cb);
+        menu->addAction(makeThemedIcon(Icons16::Misc_Info), "About...", QKeySequence{}, [this]() {
+          auto* dialog = new oclero::qlementine::AboutDialog(&owner);
+          dialog->setWindowTitle(QString("About %1").arg(QApplication::applicationDisplayName()));
+          dialog->setDescription("An application to showcase Qlementine's capabilities as a QStyle library.");
+          dialog->setWebsiteUrl("https://oclero.github.io/qlementine");
+          dialog->setLicense("Licensed under MIT license.");
+          dialog->setCopyright("© Olivier Cléro");
+          dialog->addSocialMediaLink(
+            "GitHub", "https://github.com/oclero/qlementine", makeThemedIcon(Icons16::Brand_GithubFill));
+          dialog->addSocialMediaLink(
+            "Mastodon", "https://mastodon.online/@oclero", makeThemedIcon(Icons16::Brand_MastodonFill));
+          dialog->addSocialMediaLink("GitLab", "https://gitlab.com/oclero", makeThemedIcon(Icons16::Brand_GitlabFill));
+
+          dialog->show();
+        });
       }
     }
   }
@@ -316,6 +335,8 @@ struct ShowcaseWindow::Impl {
   }
 
   void setupToolBar() {
+    const auto defaultIconSize = owner.style()->pixelMetric(QStyle::PM_SmallIconSize);
+
     toolBar = new QToolBar("App ToolBar", &owner);
     toolBar->setBackgroundRole(QPalette::ColorRole::Window);
     toolBar->setAutoFillBackground(false);
@@ -323,6 +344,7 @@ struct ShowcaseWindow::Impl {
     toolBar->setMovable(false);
     toolBar->setFloatable(false);
     toolBar->setToolButtonStyle(Qt::ToolButtonStyle::ToolButtonFollowStyle);
+    toolBar->setIconSize(QSize(defaultIconSize, defaultIconSize));
 
     const auto addButton = [this](const Icons16 icon, const QString& tooltip, const QString& text = {}) {
       auto* toolButton = new QToolButton(toolBar);
@@ -678,6 +700,12 @@ struct ShowcaseWindow::Impl {
           }
           contentLayout->addRow(groupBox);
         }
+        {
+          auto* plainTextEdit = new QPlainTextEdit(content);
+          plainTextEdit->setFrameShape(QFrame::StyledPanel);
+          plainTextEdit->setFrameShadow(QFrame::Shadow::Raised);
+          contentLayout->addRow(plainTextEdit);
+        }
       }
     }
   }
@@ -732,7 +760,7 @@ struct ShowcaseWindow::Impl {
 ShowcaseWindow::ShowcaseWindow(ThemeManager* themeManager, QWidget* parent)
   : QWidget(parent)
   , _impl(new Impl(*this, themeManager)) {
-  setWindowIcon(QIcon(QStringLiteral(":/showcase/qlementine_icon.ico")));
+  setWindowIcon(QIcon(":/showcase/qlementine_icon.ico"));
   _impl->setupUI();
   setMinimumSize(600, 400);
   resize(800, 600);

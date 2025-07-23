@@ -2,7 +2,7 @@
 
 ## Installation
 
-1. Add the library as a dependency with CMake FetchContent.
+1. Add the library as a dependency. Here is an example with CMake FetchContent. You may add it with another way such as vcpkg or from a regular installation.
 
    ```bash
    include(FetchContent)
@@ -13,7 +13,7 @@
 2. Link with the library in CMake.
 
    ```cmake
-   target_link_libraries(your_project oclero::qlementine)
+   target_link_libraries(your_project qlementine)
    ```
 
 ## Usage in code

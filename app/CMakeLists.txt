@@ -56,7 +56,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    oclero::qlementine
+    qlementine
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
