@@ -784,7 +784,7 @@ void FrameRenderer::paintGL()
                     memcpy(videoFrame.bits(0), flipped_data.data(), flipped_data.size());
 
                     // 设置准确的时间戳
-                    qint64 presentationTime = m_recordingFrameCount * FRAME_INTERVAL; // ms
+                    qint64 presentationTime = m_recordingFrameCount *  13; // ms ， 13是为了满足72fps的要求
                     videoFrame.setStartTime(presentationTime * 1000); // 转换为微秒
                     // videoFrame.setEndTime((presentationTime + FRAME_INTERVAL) * 1000);
 

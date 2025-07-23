@@ -86,7 +86,7 @@ void CameraControllerBar::setupUI()
     m_gainSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
 
     // 创建FPS标签
-    m_fpsLabel = new QLabel("0 FPS");
+    m_fpsLabel = new QLabel("   ");
     m_fpsLabel->setMinimumWidth(60);
     m_fpsLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
@@ -180,7 +180,7 @@ void CameraControllerBar::createConnections()
 
 void CameraControllerBar::onFPSUpdated(double fps)
 {
-    m_fpsLabel->setText(QString::number(fps, 'f', 1) + " FPS");
+    //m_fpsLabel->setText(QString::number(fps, 'f', 1) + " FPS");
 }
 
 void CameraControllerBar::onCameraStatusChanged(QString status, QString value)
