@@ -164,7 +164,7 @@ bool PlayerOne::open()
     // 设置默认曝光时间
     POAConfigValue exposure_value;
     POABool isAuto = POA_FALSE;
-    exposure_value.intValue = 16666;
+    exposure_value.intValue = 13889;
     error = POASetConfig(impl->cameraId, POA_EXPOSURE,
                          exposure_value, isAuto);
 

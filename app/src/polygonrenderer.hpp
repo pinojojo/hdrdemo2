@@ -38,9 +38,28 @@ public:
         initGeometry();
     }
 
+    void setFlipX(bool flip)
+    {
+        flipX = flip;
+    }
+
     void draw(const std::vector<QVector2D> &vertices, Mode mode = Mode::Open, float intensity = 1.0f)
     {
-        updateVertices(vertices, mode);
+
+        if(flipX)
+        {
+            // 翻转X轴
+            std::vector<QVector2D> flippedVertices;
+            for (const auto &v : vertices)
+            {
+                flippedVertices.push_back(QVector2D(-v.x(), v.y()));
+            }
+            updateVertices(flippedVertices, mode);
+        }
+        else
+        {
+            updateVertices(vertices, mode);
+        }
 
         shaderProgram.bind();
         shaderProgram.setUniformValue("intensity", intensity);
@@ -73,6 +92,7 @@ private:
     QOpenGLVertexArrayObject vao;
     QOpenGLFunctions_3_3_Core *glFuncs = nullptr;
     GLsizei vertexCount = 0; // 顶点的数量
+    bool flipX = false; // 是否反转X轴 渲染多边形时
 
     void initShaders()
     {

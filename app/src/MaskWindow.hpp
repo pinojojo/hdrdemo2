@@ -36,6 +36,7 @@ public:
           polygonRenderer(new PolygonRenderer()),
           imageRenderer(new ImageRenderer())
     {
+        polygonRenderer->setFlipX(true); // 默认反转X轴
     }
 
     ~MaskOpenGLWidget()
